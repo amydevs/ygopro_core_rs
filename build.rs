@@ -1,49 +1,72 @@
+extern crate cc;
+
 use std::env;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 
 fn main() {
-    let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let lua_folder = "deps";
 
-    let src_folder = Path::new(&base_dir).join("ygopro-core");
+    let dst = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let lua_dir = PathBuf::from(lua_folder).join("lua53");
+    let target_os = env::var("CARGO_CFG_TARGET_OS");
+    let target_family = env::var("CARGO_CFG_TARGET_FAMILY");
 
-    println!("cargo:rerun-if-changed={}", src_folder.display());
-    println!("cargo:rustc-link-search={}", src_folder.display());
+    let mut cc_config = cc::Build::new();
+    cc_config.warnings(false);
 
-    let src_files = [
-        "card.cpp",
-        "duel.cpp",
-        "effect.cpp",
-        "field.cpp",
-        "group.cpp",
-        "interpreter.cpp",
-        "libcard.cpp",
-        "libdebug.cpp",
-        "libduel.cpp",
-        "libeffect.cpp",
-        "libgroup.cpp",
-        "ocgapi.cpp",
-        "operations.cpp",
-        "playerop.cpp",
-        "processor.cpp",
-        "scriptlib.cpp",
-    ];
+    if target_os == Ok("linux".to_string()) {
+        cc_config.define("LUA_USE_LINUX", None);
+    } else if target_os == Ok("macos".to_string()) {
+        cc_config.define("LUA_USE_MACOSX", None);
+    } else if target_family == Ok("unix".to_string()) {
+        cc_config.define("LUA_USE_POSIX", None);
+    } else if target_family == Ok("windows".to_string()) {
+        cc_config.define("LUA_USE_WINDOWS", None);
+    }
 
-    cc::Build::new()
-        .cpp(true)
-        .files(src_files.map(|f| src_folder.join(f)))
-        .includes(["./include"])
-        .compile("ocgcore.lib");
+    let mut cc_config_build = cc_config.include(&lua_dir);
 
-    let bindings = bindgen::Builder::default()
-        .header("ygopro-core/ocgapi.h")
-        .clang_arg("-I./ygopro-core")
-        .clang_arg("-I./include")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        .generate()
-        .expect("Unable to generate bindings");
 
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    cc_config_build = cc_config_build
+        .file(lua_dir.join("lapi.c"))
+        .file(lua_dir.join("lauxlib.c"))
+        .file(lua_dir.join("lbaselib.c"))
+        .file(lua_dir.join("lbitlib.c"))
+        .file(lua_dir.join("lcode.c"))
+        .file(lua_dir.join("lcorolib.c"))
+        .file(lua_dir.join("lctype.c"))
+        .file(lua_dir.join("ldblib.c"))
+        .file(lua_dir.join("ldebug.c"))
+        .file(lua_dir.join("ldo.c"))
+        .file(lua_dir.join("ldump.c"))
+        .file(lua_dir.join("lfunc.c"))
+        .file(lua_dir.join("lgc.c"))
+        .file(lua_dir.join("liolib.c"))
+        .file(lua_dir.join("llex.c"))
+        .file(lua_dir.join("lmathlib.c"))
+        .file(lua_dir.join("lmem.c"))
+        .file(lua_dir.join("loadlib.c"))
+        .file(lua_dir.join("lobject.c"))
+        .file(lua_dir.join("lopcodes.c"))
+        .file(lua_dir.join("lparser.c"))
+        .file(lua_dir.join("lstate.c"))
+        .file(lua_dir.join("lstring.c"))
+        .file(lua_dir.join("lstrlib.c"))
+        .file(lua_dir.join("ltable.c"))
+        .file(lua_dir.join("ltablib.c"))
+        .file(lua_dir.join("ltm.c"))
+        .file(lua_dir.join("lundump.c"))
+        .file(lua_dir.join("lutf8lib.c"))
+        .file(lua_dir.join("lvm.c"))
+        .file(lua_dir.join("lzio.c"));
+
+    if !cfg!(feature = "lua-no-oslib") {
+        cc_config_build = cc_config_build
+            .file(lua_dir.join("loslib.c"))
+            .file(lua_dir.join("linit.c"));
+    }
+
+    cc_config_build
+        .out_dir(dst.join("lib"))
+        .compile("liblua5.3.a");
 }
