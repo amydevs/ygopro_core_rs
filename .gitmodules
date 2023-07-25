@@ -1,0 +1,3 @@
+[submodule "deps/ygopro-core"]
+	path = deps/ygopro-core
+	url = https://github.com/ProjectIgnis/EDOPro-Core
