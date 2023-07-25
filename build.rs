@@ -10,9 +10,10 @@ fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS");
     let target_family = env::var("CARGO_CFG_TARGET_FAMILY");
     
+    let ygopro_dir = PathBuf::from(deps_folder).join("ygopro-core");
+    let lua_dir = ygopro_dir.join("deps").join("lua53");
+    
     // compile lua
-    let lua_dir = PathBuf::from(deps_folder).join("lua53");
-
     let mut lua_cc_config = cc::Build::new();
     lua_cc_config.warnings(false);
 
@@ -32,7 +33,6 @@ fn main() {
         .file(lua_dir.join("lapi.c"))
         .file(lua_dir.join("lauxlib.c"))
         .file(lua_dir.join("lbaselib.c"))
-        .file(lua_dir.join("lbitlib.c"))
         .file(lua_dir.join("lcode.c"))
         .file(lua_dir.join("lcorolib.c"))
         .file(lua_dir.join("lctype.c"))
@@ -72,8 +72,8 @@ fn main() {
         .compile("liblua5.3.a");
 
     // compile the ygopro
-    let ygopro_dir = PathBuf::from(deps_folder).join("ygopro-core");
     let mut ygopro_cc_config = cc::Build::new();
+    ygopro_cc_config.warnings(false);
     ygopro_cc_config.cpp(true);
 
     println!("cargo:rustc-link-search={}", dst.join("lib").to_str().unwrap());
