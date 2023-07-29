@@ -11,7 +11,7 @@ fn main() {
     let target_family = env::var("CARGO_CFG_TARGET_FAMILY");
     
     let ygopro_dir = PathBuf::from(deps_folder).join("ygopro-core");
-    let lua_dir = ygopro_dir.join("deps").join("lua53");
+    let lua_dir = PathBuf::from(deps_folder).join("lua53");
     
     // compile lua
     let mut lua_cc_config = cc::Build::new();
