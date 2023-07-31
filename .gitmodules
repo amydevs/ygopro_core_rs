@@ -1,6 +1,6 @@
 [submodule "deps/ygopro-core"]
 	path = deps/ygopro-core
-	url = https://github.com/ProjectIgnis/EDOPro-Core
+	url = https://github.com/edo9300/ygopro-core
 [submodule "deps/lua53"]
 	path = deps/lua53
 	url = https://github.com/lua/lua.git
