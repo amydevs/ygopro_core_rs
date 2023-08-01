@@ -2,9 +2,9 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+use std::ops::Deref;
 
-pub mod OCGDuelOptions;
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub struct OCGDuelInstance {
     ptr: *mut ::std::os::raw::c_void
@@ -19,6 +19,7 @@ impl Drop for OCGDuelInstance {
 }
 
 impl OCGDuelInstance {
+    // Informative
     pub fn get_version() -> [i32; 2] {
         let mut major_version: i32 = 0;
         let mut minor_version: i32 = 0;
@@ -27,6 +28,7 @@ impl OCGDuelInstance {
         }
         return [major_version, minor_version];
     }
+    // Lifecycle
     pub fn create_duel(options: OCG_DuelOptions) -> OCGDuelInstance {
         let mut pduel: *mut ::std::os::raw::c_void = std::ptr::null_mut();
         unsafe {
@@ -34,6 +36,19 @@ impl OCGDuelInstance {
         }
         return OCGDuelInstance {
             ptr: pduel
+        }
+    }
+    pub fn destroy_duel(&self) {
+        drop(self);
+    }
+    pub fn new_card(&self, info: OCG_NewCardInfo) {
+        unsafe {
+            OCG_DuelNewCard(self.ptr, info);
+        }
+    }
+    pub fn start_duel(&self) {
+        unsafe {
+            OCG_StartDuel(self.ptr);
         }
     }
 }
