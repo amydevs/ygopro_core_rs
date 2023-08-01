@@ -1,14 +1,12 @@
 [package]
-name = "ygopro-core-rs"
+name = "ygopro-core-rs-sys"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[workspace]
-members = [
-    "./ygopro-core-rs-sys"
-]
-
 [dependencies]
-ygopro-core-rs-sys = {path = "./ygopro-core-rs-sys" }
+
+[build-dependencies]
+bindgen = "0.53.1"
+cc = "1"

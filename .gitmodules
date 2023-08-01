@@ -1,7 +1,7 @@
-[submodule "ygopro-core"]
+[submodule "ygopro-core-rs-sys/deps/ygopro-core"]
 	path = ygopro-core-rs-sys/deps/ygopro-core
 	url = https://github.com/edo9300/ygopro-core
-[submodule "lua53"]
+[submodule "ygopro-core-rs-sys/deps/lua53"]
 	path = ygopro-core-rs-sys/deps/lua53
 	url = https://github.com/lua/lua.git
 	branch = v5.3

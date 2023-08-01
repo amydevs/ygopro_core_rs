@@ -2,9 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use std::ops::Deref;
-
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+use ygopro_core_rs_sys::*;
 
 pub struct OCGDuelInstance {
     ptr: *mut ::std::os::raw::c_void
