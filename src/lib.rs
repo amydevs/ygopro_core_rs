@@ -8,7 +8,7 @@ use ygopro_core_rs_sys::*;
 pub struct OCGPlayer {
     starting_lp: u32,
     starting_draw_count: u32,
-    draw_count_per_turn: u32
+    draw_count_per_turn: u32,
 }
 
 impl Default for OCGPlayer {
@@ -16,17 +16,17 @@ impl Default for OCGPlayer {
         OCGPlayer {
             starting_lp: 8000,
             starting_draw_count: 5,
-            draw_count_per_turn: 1
+            draw_count_per_turn: 1,
         }
     }
 }
 
-impl Into<OCG_Player> for OCGPlayer {
-    fn into(self) -> OCG_Player {
+impl From<OCGPlayer> for OCG_Player {
+    fn from(val: OCGPlayer) -> Self {
         OCG_Player {
-            startingLP: self.starting_lp,
-            startingDrawCount: self.starting_draw_count,
-            drawCountPerTurn: self.draw_count_per_turn
+            startingLP: val.starting_lp,
+            startingDrawCount: val.starting_draw_count,
+            drawCountPerTurn: val.draw_count_per_turn,
         }
     }
 }
@@ -41,19 +41,15 @@ pub struct OCGDuelBuilder {
     flags: u64,
     team_1: OCGPlayer,
     team_2: OCGPlayer,
-    enable_unsafe_libraries: bool
+    enable_unsafe_libraries: bool,
 }
 
 impl Default for OCGDuelBuilder {
     fn default() -> OCGDuelBuilder {
         OCGDuelBuilder {
             card_handler: Box::new(|_, _| {}),
-            script_handler: Box::new(|_, _| {
-                0
-            }),
-            script_handler_wrapper: Box::new(|_, _| {
-                0
-            }),
+            script_handler: Box::new(|_, _| 0),
+            script_handler_wrapper: Box::new(|_, _| 0),
             log_handler: None,
             card_read_done_handler: None,
             seed: [0; 4],
@@ -67,38 +63,50 @@ impl Default for OCGDuelBuilder {
 
 impl OCGDuelBuilder {
     pub fn set_card_handler<F>(&mut self, callback: F)
-        where F: FnMut(u32, *mut OCG_CardData),
-              F: 'static
+    where
+        F: FnMut(u32, *mut OCG_CardData),
+        F: 'static,
     {
         self.card_handler = Box::new(callback);
     }
     pub fn set_script_handler<F>(&mut self, callback: F)
-        where F: FnMut(&OCGDuelInstance, &str) -> i32,
-              F: 'static
+    where
+        F: FnMut(&OCGDuelInstance, &str) -> i32,
+        F: 'static,
     {
         self.script_handler = Box::new(callback);
     }
     extern "C" fn card_handler_ffi(cb: *mut os::raw::c_void, code: u32, data: *mut OCG_CardData) {
-        let closure: &mut Box<dyn FnMut(u32, *mut OCG_CardData)> = unsafe { mem::transmute(cb) };
+        let closure: &mut Box<dyn FnMut(u32, *mut OCG_CardData)> = unsafe {
+            &mut *(cb as *mut std::boxed::Box<
+                dyn std::ops::FnMut(u32, *mut ygopro_core_rs_sys::OCG_CardData),
+            >)
+        };
         closure(code, data)
     }
-    extern "C" fn script_handler_ffi(cb: *mut os::raw::c_void, duel_ptr: *mut os::raw::c_void, name: *const i8) -> i32 {
-        let nameStr = unsafe {
-            ffi::CStr::from_ptr(name)
+    extern "C" fn script_handler_ffi(
+        cb: *mut os::raw::c_void,
+        duel_ptr: *mut os::raw::c_void,
+        name: *const i8,
+    ) -> i32 {
+        let nameStr = unsafe { ffi::CStr::from_ptr(name) };
+        let closure: &mut Box<dyn FnMut(*mut os::raw::c_void, &str) -> i32> = unsafe {
+            &mut *(cb as *mut std::boxed::Box<
+                dyn for<'a> std::ops::FnMut(*mut std::ffi::c_void, &'a str) -> i32,
+            >)
         };
-        let closure: &mut Box<dyn FnMut(*mut os::raw::c_void, &str) -> i32> = unsafe { mem::transmute(cb) };
         closure(duel_ptr, nameStr.to_str().unwrap())
     }
     extern "C" fn log_handler_ffi(cb: *mut os::raw::c_void, msg: *const i8, msgType: i32) {
-        let msgStr = unsafe {
-            ffi::CStr::from_ptr(msg)
+        let msgStr = unsafe { ffi::CStr::from_ptr(msg) };
+        let closure: &mut Box<dyn FnMut(&str, i32)> = unsafe {
+            &mut *(cb as *mut std::boxed::Box<dyn for<'a> std::ops::FnMut(&'a str, i32)>)
         };
-        let closure: &mut Box<dyn FnMut(&str, i32)> = unsafe { mem::transmute(cb) };
         closure(msgStr.to_str().unwrap(), msgType)
     }
     pub fn build(mut self) -> OCGDuelInstance {
         let mut duel = OCGDuelInstance {
-            ptr: std::ptr::null_mut()
+            ptr: std::ptr::null_mut(),
         };
         // This needs to be done so that the script_handler is able to access the duel instance
         // We can assume that the duel instance will be valid for the lifetime of the script_handler,
@@ -126,20 +134,22 @@ impl OCGDuelBuilder {
             scriptReader: Some(Self::script_handler_ffi),
             payload2: Box::into_raw(Box::new(self.script_handler_wrapper)) as *mut _,
             logHandler: self.log_handler.as_ref().and(Some(Self::log_handler_ffi)),
-            payload3: self.log_handler.map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
+            payload3: self
+                .log_handler
+                .map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
             cardReaderDone: None,
             payload4: std::ptr::null_mut(),
             seed: self.seed,
             flags: self.flags,
             team1: self.team_1.into(),
             team2: self.team_2.into(),
-            enableUnsafeLibraries: self.enable_unsafe_libraries.into()
+            enableUnsafeLibraries: self.enable_unsafe_libraries.into(),
         };
         unsafe {
             OCG_CreateDuel(&mut duel.ptr, options);
         }
-        return duel;
-    } 
+        duel
+    }
 }
 
 pub struct OCGDuelInstance {
@@ -162,7 +172,7 @@ impl OCGDuelInstance {
         unsafe {
             OCG_GetVersion(&mut major_version, &mut minor_version);
         }
-        return [major_version, minor_version];
+        [major_version, minor_version]
     }
     // Lifecycle
     pub fn new_card(&self, info: OCG_NewCardInfo) {
@@ -176,7 +186,6 @@ impl OCGDuelInstance {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
