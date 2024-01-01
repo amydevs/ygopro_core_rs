@@ -84,11 +84,7 @@ impl OCGDuelBuilder {
         self.log_handler = Some(Box::new(callback));
     }
     extern "C" fn card_handler_ffi(cb: *mut os::raw::c_void, code: u32, data: *mut OCG_CardData) {
-        let closure: &mut Box<dyn FnMut(u32, *mut OCG_CardData)> = unsafe {
-            &mut *(cb as *mut std::boxed::Box<
-                dyn std::ops::FnMut(u32, *mut ygopro_core_rs_sys::OCG_CardData),
-            >)
-        };
+        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(u32, *mut OCG_CardData)>) };
         closure(code, data)
     }
     extern "C" fn script_handler_ffi(
@@ -97,26 +93,18 @@ impl OCGDuelBuilder {
         name: *const i8,
     ) -> i32 {
         let nameStr = unsafe { ffi::CStr::from_ptr(name) };
-        let closure: &mut Box<dyn FnMut(*mut os::raw::c_void, &str) -> i32> = unsafe {
-            &mut *(cb as *mut std::boxed::Box<
-                dyn for<'a> std::ops::FnMut(*mut std::ffi::c_void, &'a str) -> i32,
-            >)
+        let closure = unsafe {
+            &mut *(cb as *mut Box<dyn for<'a> FnMut(*mut std::ffi::c_void, &'a str) -> i32>)
         };
         closure(duel_ptr, nameStr.to_str().unwrap())
     }
     extern "C" fn log_handler_ffi(cb: *mut os::raw::c_void, msg: *const i8, msg_type: i32) {
         let msgStr = unsafe { ffi::CStr::from_ptr(msg) };
-        let closure: &mut Box<dyn FnMut(&str, i32)> = unsafe {
-            &mut *(cb as *mut std::boxed::Box<dyn for<'a> std::ops::FnMut(&'a str, i32)>)
-        };
+        let closure = unsafe { &mut *(cb as *mut Box<dyn for<'a> FnMut(&'a str, i32)>) };
         closure(msgStr.to_str().unwrap(), msg_type)
     }
     extern "C" fn card_read_done_handler_ffi(cb: *mut os::raw::c_void, data: *mut OCG_CardData) {
-        let closure: &mut Box<dyn FnMut(*mut OCG_CardData)> = unsafe {
-            &mut *(cb as *mut std::boxed::Box<
-                dyn std::ops::FnMut(*mut ygopro_core_rs_sys::OCG_CardData),
-            >)
-        };
+        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(*mut OCG_CardData)>) };
         closure(data)
     }
     pub fn build(mut self) -> OCGDuelInstance {
@@ -152,7 +140,10 @@ impl OCGDuelBuilder {
             payload3: self
                 .log_handler
                 .map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
-            cardReaderDone: self.card_read_done_handler.as_ref().and(Some(Self::card_read_done_handler_ffi)),
+            cardReaderDone: self
+                .card_read_done_handler
+                .as_ref()
+                .and(Some(Self::card_read_done_handler_ffi)),
             payload4: self
                 .card_read_done_handler
                 .map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
