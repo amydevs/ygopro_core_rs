@@ -76,6 +76,13 @@ impl OCGDuelBuilder {
     {
         self.script_handler = Box::new(callback);
     }
+    pub fn set_log_handler<F>(&mut self, callback: F)
+    where
+        F: FnMut(&str, i32),
+        F: 'static,
+    {
+        self.log_handler = Some(Box::new(callback));
+    }
     extern "C" fn card_handler_ffi(cb: *mut os::raw::c_void, code: u32, data: *mut OCG_CardData) {
         let closure: &mut Box<dyn FnMut(u32, *mut OCG_CardData)> = unsafe {
             &mut *(cb as *mut std::boxed::Box<
@@ -97,12 +104,12 @@ impl OCGDuelBuilder {
         };
         closure(duel_ptr, nameStr.to_str().unwrap())
     }
-    extern "C" fn log_handler_ffi(cb: *mut os::raw::c_void, msg: *const i8, msgType: i32) {
+    extern "C" fn log_handler_ffi(cb: *mut os::raw::c_void, msg: *const i8, msg_type: i32) {
         let msgStr = unsafe { ffi::CStr::from_ptr(msg) };
         let closure: &mut Box<dyn FnMut(&str, i32)> = unsafe {
             &mut *(cb as *mut std::boxed::Box<dyn for<'a> std::ops::FnMut(&'a str, i32)>)
         };
-        closure(msgStr.to_str().unwrap(), msgType)
+        closure(msgStr.to_str().unwrap(), msg_type)
     }
     pub fn build(mut self) -> OCGDuelInstance {
         let mut duel = OCGDuelInstance {
@@ -199,11 +206,7 @@ mod tests {
     }
     #[test]
     fn test_create_duel() {
-        let mut duel_builder = OCGDuelBuilder::default();
-        duel_builder.set_script_handler(|duel, name| {
-            println!("{:?} {}", duel.ptr, name);
-            1
-        });
+        let duel_builder = OCGDuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
         // duel.new_card(OCG_NewCardInfo { team: 0, duelist: 1, code: 1, con: 0, loc: 0, seq: 0, pos: 0 });
