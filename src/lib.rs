@@ -47,7 +47,7 @@ pub struct OCGDuelBuilder {
 impl Default for OCGDuelBuilder {
     fn default() -> OCGDuelBuilder {
         OCGDuelBuilder {
-            card_handler: Box::new(|_, _| {}),
+            card_handler: Box::new(|_, _| ()),
             script_handler: Box::new(|_, _| 0),
             script_handler_wrapper: Box::new(|_, _| 0),
             log_handler: None,
@@ -111,6 +111,14 @@ impl OCGDuelBuilder {
         };
         closure(msgStr.to_str().unwrap(), msg_type)
     }
+    extern "C" fn card_read_done_handler_ffi(cb: *mut os::raw::c_void, data: *mut OCG_CardData) {
+        let closure: &mut Box<dyn FnMut(*mut OCG_CardData)> = unsafe {
+            &mut *(cb as *mut std::boxed::Box<
+                dyn std::ops::FnMut(*mut ygopro_core_rs_sys::OCG_CardData),
+            >)
+        };
+        closure(data)
+    }
     pub fn build(mut self) -> OCGDuelInstance {
         let mut duel = OCGDuelInstance {
             ptr: std::ptr::null_mut(),
@@ -144,8 +152,10 @@ impl OCGDuelBuilder {
             payload3: self
                 .log_handler
                 .map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
-            cardReaderDone: None,
-            payload4: std::ptr::null_mut(),
+            cardReaderDone: self.card_read_done_handler.as_ref().and(Some(Self::card_read_done_handler_ffi)),
+            payload4: self
+                .card_read_done_handler
+                .map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
             seed: self.seed,
             flags: self.flags,
             team1: self.team_1.into(),
