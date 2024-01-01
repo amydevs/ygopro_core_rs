@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+use std::*;
 use ygopro_core_rs_sys::*;
 
 pub struct OCGPlayer {
@@ -31,8 +32,8 @@ impl Into<OCG_Player> for OCGPlayer {
 }
 
 pub struct OCGDuelBuilder {
-    card_handler: Option<Box<Box<dyn FnMut(u32, *mut OCG_CardData) + 'static>>>,
-    script_handler: Option<Box<dyn FnMut(OCGDuelInstance, &str) + 'static>>,
+    card_handler: Box<dyn FnMut(u32, *mut OCG_CardData) + 'static>,
+    script_handler: Box<dyn FnMut(&str) -> i32 + 'static>,
     log_handler: Option<Box<dyn FnMut(*const i8, i32) + 'static>>,
     card_reader_done_handler: Option<Box<dyn FnMut(*mut OCG_CardData) + 'static>>,
     seed: [u64; 4],
@@ -45,8 +46,10 @@ pub struct OCGDuelBuilder {
 impl Default for OCGDuelBuilder {
     fn default() -> OCGDuelBuilder {
         OCGDuelBuilder {
-            card_handler: None,
-            script_handler: None,
+            card_handler: Box::new(|_, _| {}),
+            script_handler: Box::new(|_| {
+                0
+            }),
             log_handler: None,
             card_reader_done_handler: None,
             seed: [0; 4],
@@ -63,34 +66,33 @@ impl OCGDuelBuilder {
         where F: FnMut(u32, *mut OCG_CardData),
               F: 'static
     {
-        self.card_handler = Some(Box::new(Box::new(callback)));
-    }
-    pub fn unset_card_handler(&mut self) {
-        self.card_handler = None;
+        self.card_handler = Box::new(callback);
     }
     pub fn set_script_handler<F>(&mut self, callback: F)
-        where F: FnMut(OCGDuelInstance, &str),
+        where F: FnMut(&str) -> i32,
               F: 'static
     {
-        self.script_handler = Some(Box::new(callback));
+        self.script_handler = Box::new(callback);
     }
-    extern "C" fn card_handler_raw(cb: *mut ::std::os::raw::c_void, code: u32, data: *mut OCG_CardData) {
-        let closure: &mut Box<dyn FnMut(u32, *mut OCG_CardData)> = unsafe { ::std::mem::transmute(cb) };
+    extern "C" fn card_handler_raw(cb: *mut os::raw::c_void, code: u32, data: *mut OCG_CardData) {
+        let closure: &mut Box<dyn FnMut(u32, *mut OCG_CardData)> = unsafe { mem::transmute(cb) };
         closure(code, data)
     }
-    extern "C" fn script_handler_raw(cb: *mut ::std::os::raw::c_void, _ocg_duel: *mut ::std::os::raw::c_void, name: *const i8) -> i32 {
+    extern "C" fn script_handler_raw(cb: *mut os::raw::c_void, _ocg_duel: *mut os::raw::c_void, name: *const i8) -> i32 {
         let nameStr = unsafe {
-            ::std::ffi::CStr::from_ptr(name)
+            ffi::CStr::from_ptr(name)
         };
-        let closure: &mut Box<dyn FnMut(&str) -> i32> = unsafe { ::std::mem::transmute(cb) };
+        let closure: &mut Box<dyn FnMut(&str) -> i32> = unsafe { mem::transmute(cb) };
         closure(nameStr.to_str().unwrap())
     }
     pub fn build(self) -> OCGDuelInstance {
+        // cardReader: self.card_handler.as_ref().and(Some(Self::card_handler_raw)),
+        // payload1: self.card_handler.map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
         let options = OCG_DuelOptions {
-            cardReader: self.card_handler.as_ref().and(Some(Self::card_handler_raw)),
-            payload1: self.card_handler.map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
-            scriptReader: None,
-            payload2: std::ptr::null_mut(),
+            cardReader: Some(Self::card_handler_raw),
+            payload1: Box::into_raw(Box::new(self.card_handler)) as *mut _,
+            scriptReader: Some(Self::script_handler_raw),
+            payload2: Box::into_raw(Box::new(self.script_handler)) as *mut _,
             logHandler: None,
             payload3: std::ptr::null_mut(),
             cardReaderDone: None,
@@ -101,7 +103,7 @@ impl OCGDuelBuilder {
             team2: self.team_2.into(),
             enableUnsafeLibraries: self.enable_unsafe_libraries.into()
         };
-        let mut pduel: *mut ::std::os::raw::c_void = std::ptr::null_mut();
+        let mut pduel: *mut os::raw::c_void = std::ptr::null_mut();
         unsafe {
             OCG_CreateDuel(&mut pduel, options);
         }
@@ -112,7 +114,7 @@ impl OCGDuelBuilder {
 }
 
 pub struct OCGDuelInstance {
-    ptr: *mut ::std::os::raw::c_void
+    ptr: *mut os::raw::c_void
 }
 
 impl Drop for OCGDuelInstance {
@@ -159,5 +161,8 @@ mod tests {
     }
     #[test]
     fn test_create_duel() {
+        let duel = OCGDuelBuilder::default().build();
+        assert!(!duel.ptr.is_null());
+        duel.new_card(OCG_NewCardInfo { team: 0, duelist: 1, code: 1, con: 0, loc: 0, seq: 0, pos: 0 });
     }
 }
