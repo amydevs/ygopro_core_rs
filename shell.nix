@@ -6,6 +6,8 @@ mkShell {
     shellcheck
     gitAndTools.gh
     rustc
+    clippy
+    rustfmt
     cargo
     cmake
     # Rust bindgen hook (necessary to build boring)
