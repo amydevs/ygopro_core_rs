@@ -35,8 +35,8 @@ pub struct OCGDuelBuilder {
     card_handler: Box<dyn FnMut(u32, *mut OCG_CardData) + 'static>,
     script_handler: Box<dyn FnMut(&OCGDuelInstance, &str) -> i32 + 'static>,
     script_handler_wrapper: Box<dyn FnMut(*mut os::raw::c_void, &str) -> i32 + 'static>,
-    log_handler: Option<Box<dyn FnMut(*const i8, i32) + 'static>>,
-    card_reader_done_handler: Option<Box<dyn FnMut(*mut OCG_CardData) + 'static>>,
+    log_handler: Option<Box<dyn FnMut(&str, i32) + 'static>>,
+    card_read_done_handler: Option<Box<dyn FnMut(*mut OCG_CardData) + 'static>>,
     seed: [u64; 4],
     flags: u64,
     team_1: OCGPlayer,
@@ -55,7 +55,7 @@ impl Default for OCGDuelBuilder {
                 0
             }),
             log_handler: None,
-            card_reader_done_handler: None,
+            card_read_done_handler: None,
             seed: [0; 4],
             flags: 0,
             team_1: OCGPlayer::default(),
@@ -78,16 +78,23 @@ impl OCGDuelBuilder {
     {
         self.script_handler = Box::new(callback);
     }
-    extern "C" fn card_handler_raw(cb: *mut os::raw::c_void, code: u32, data: *mut OCG_CardData) {
+    extern "C" fn card_handler_ffi(cb: *mut os::raw::c_void, code: u32, data: *mut OCG_CardData) {
         let closure: &mut Box<dyn FnMut(u32, *mut OCG_CardData)> = unsafe { mem::transmute(cb) };
         closure(code, data)
     }
-    extern "C" fn script_handler_raw(cb: *mut os::raw::c_void, duel_ptr: *mut os::raw::c_void, name: *const i8) -> i32 {
+    extern "C" fn script_handler_ffi(cb: *mut os::raw::c_void, duel_ptr: *mut os::raw::c_void, name: *const i8) -> i32 {
         let nameStr = unsafe {
             ffi::CStr::from_ptr(name)
         };
         let closure: &mut Box<dyn FnMut(*mut os::raw::c_void, &str) -> i32> = unsafe { mem::transmute(cb) };
         closure(duel_ptr, nameStr.to_str().unwrap())
+    }
+    extern "C" fn log_handler_ffi(cb: *mut os::raw::c_void, msg: *const i8, msgType: i32) {
+        let msgStr = unsafe {
+            ffi::CStr::from_ptr(msg)
+        };
+        let closure: &mut Box<dyn FnMut(&str, i32)> = unsafe { mem::transmute(cb) };
+        closure(msgStr.to_str().unwrap(), msgType)
     }
     pub fn build(mut self) -> OCGDuelInstance {
         let mut duel = OCGDuelInstance {
@@ -112,16 +119,14 @@ impl OCGDuelBuilder {
                 (self.script_handler)(mut_ptr_ref, name)
             }
         });
-        // cardReader: self.card_handler.as_ref().and(Some(Self::card_handler_raw)),
-        // payload1: self.card_handler.map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _)
         // Double indirection is required for the callback pointers
         let options = OCG_DuelOptions {
-            cardReader: Some(Self::card_handler_raw),
+            cardReader: Some(Self::card_handler_ffi),
             payload1: Box::into_raw(Box::new(self.card_handler)) as *mut _,
-            scriptReader: Some(Self::script_handler_raw),
+            scriptReader: Some(Self::script_handler_ffi),
             payload2: Box::into_raw(Box::new(self.script_handler_wrapper)) as *mut _,
-            logHandler: None,
-            payload3: std::ptr::null_mut(),
+            logHandler: self.log_handler.as_ref().and(Some(Self::log_handler_ffi)),
+            payload3: self.log_handler.map_or(std::ptr::null_mut(), |cb| Box::into_raw(cb) as *mut _),
             cardReaderDone: None,
             payload4: std::ptr::null_mut(),
             seed: self.seed,
