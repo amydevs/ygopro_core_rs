@@ -234,11 +234,17 @@ impl OCGDuelInstance {
         }
         message_vec
     }
+    /// Sets the next player response for the duel simulation.
+    /// Subsequent calls overwrite previous responses if [`process`](#method.process) has not been called.
+    /// The contents of the provided buffer are copied internally.
     pub fn set_response(&self, response: &[u8]) {
         unsafe {
             OCG_DuelSetResponse(self.ptr, response.as_ptr() as *const _, response.len() as u32);
         }
     }
+    /// Load a Lua card script or supporting script for the specified duel.
+    /// Generally you do not call this directly except to load global scripts;
+    /// instead you want to call this from your handler provided to [`set_script_handler`](struct.OCGDuelBuilder.html#method.set_script_handler).
     pub fn load_script(&self, src_code: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let src_code = ffi::CString::new(src_code)?;
         let name_cstr = ffi::CString::new(name)?;
@@ -249,6 +255,10 @@ impl OCGDuelInstance {
             return Err(Box::new(OCGDuelError::ScriptLoadFailure(name.to_owned())));
         }
         Ok(())
+    }
+    // Querying
+    pub fn query_count(&self, player: u8, location: u32) -> u32 {
+        unsafe { OCG_DuelQueryCount(self.ptr, player, location) }
     }
 }
 
