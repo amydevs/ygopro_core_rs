@@ -119,6 +119,8 @@ impl OCGDuelBuilder {
         // as this is only called on OCGDuelInstance::new_card and OCG_CreateDuel.
         // Because this is called on OCG_CreateDuel, we need to set the pointer here,
         // so that the instance will have the correct pointer when OCG_CreateDuel is called.
+        // `duel` should never go out of scope during construction.
+        // If it does, this would become a memory leak, as the pointer would be lost before it is properly set in OCG_CreateDuel.
         let mut_ptr = &mut duel as *mut OCGDuelInstance;
         self.script_handler_wrapper = Box::new(move |duel_ptr, name| {
             if duel_ptr != mut_ptr as *mut _ {
@@ -209,6 +211,8 @@ impl OCGDuelInstance {
             OCG_DuelNewCard(self.ptr, info);
         }
     }
+    /// Start the duel simulation and state machine.
+    /// Call this after all options and cards for the duel have been loaded.
     pub fn start(&self) {
         unsafe {
             OCG_StartDuel(self.ptr);
@@ -218,9 +222,13 @@ impl OCGDuelInstance {
         drop(self);
     }
     // Processing
+    /// Runs the state machine to start the duel or after a waiting state requiring a player response.
     pub fn process(&self) -> OCGDuelStatus {
         unsafe { (OCG_DuelProcess(self.ptr) as OCG_DuelStatus).into() }
     }
+    /// The main interface to the simulation.
+    /// Returns a copy of the internal buffer containing all messages from the duel simulation.
+    /// Subsequent calls invalidate previous buffers.
     pub fn get_message(&self) -> Vec<u8> {
         let mut length: u32 = 0;
         let mut ptr = unsafe { OCG_DuelGetMessage(self.ptr, &mut length) as *const u8 };
@@ -235,7 +243,7 @@ impl OCGDuelInstance {
         message_vec
     }
     /// Sets the next player response for the duel simulation.
-    /// Subsequent calls overwrite previous responses if [`process`](#method.process) has not been called.
+    /// Subsequent calls overwrite previous responses if [`process`](#method.process) has not been called after.
     /// The contents of the provided buffer are copied internally.
     pub fn set_response(&self, response: &[u8]) {
         unsafe {
@@ -257,8 +265,48 @@ impl OCGDuelInstance {
         Ok(())
     }
     // Querying
+    /// Returns the number of cards in the specified zone.
     pub fn query_count(&self, player: u8, location: u32) -> u32 {
         unsafe { OCG_DuelQueryCount(self.ptr, player, location) }
+    }
+    pub fn query(&self, query_info: OCG_QueryInfo) -> Vec<u8> {
+        let mut length: u32 = 0;
+        let mut ptr = unsafe { OCG_DuelQuery(self.ptr, &mut length, query_info) as *const u8 };
+        let mut result_vec: Vec<u8> = Vec::with_capacity(length as usize);
+        let end_rounded_up = ptr.wrapping_offset(length as isize);
+        while ptr != end_rounded_up {
+            unsafe {
+                result_vec.push(*ptr);
+            }
+            ptr = ptr.wrapping_offset(1);
+        }
+        result_vec
+    }
+    pub fn query_location(&self, query_info: OCG_QueryInfo) -> Vec<u8> {
+        let mut length: u32 = 0;
+        let mut ptr = unsafe { OCG_DuelQueryLocation(self.ptr, &mut length, query_info) as *const u8 };
+        let mut result_vec: Vec<u8> = Vec::with_capacity(length as usize);
+        let end_rounded_up = ptr.wrapping_offset(length as isize);
+        while ptr != end_rounded_up {
+            unsafe {
+                result_vec.push(*ptr);
+            }
+            ptr = ptr.wrapping_offset(1);
+        }
+        result_vec
+    }
+    pub fn query_field(&self) -> Vec<u8> {
+        let mut length: u32 = 0;
+        let mut ptr = unsafe { OCG_DuelQueryField(self.ptr, &mut length) as *const u8 };
+        let mut result_vec: Vec<u8> = Vec::with_capacity(length as usize);
+        let end_rounded_up = ptr.wrapping_offset(length as isize);
+        while ptr != end_rounded_up {
+            unsafe {
+                result_vec.push(*ptr);
+            }
+            ptr = ptr.wrapping_offset(1);
+        }
+        result_vec
     }
 }
 
@@ -300,7 +348,7 @@ mod tests {
         assert!(!duel.ptr.is_null());
         duel.start();
         duel.process();
-        duel.get_message();
+        println!("{:?}", duel.get_message());
     }
     #[test]
     fn test_load_script_duel() {
