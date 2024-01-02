@@ -218,6 +218,19 @@ impl OCGDuelInstance {
     pub fn process(&self) -> OCGDuelStatus {
         unsafe { (OCG_DuelProcess(self.ptr) as OCG_DuelStatus).into() }
     }
+    pub fn get_message(&self) -> Vec<u8> {
+        let mut length: u32 = 0;
+        let mut ptr = unsafe { OCG_DuelGetMessage(self.ptr, &mut length) as *const u8 };
+        let mut message_vec: Vec<u8> = Vec::with_capacity(length as usize);
+        let end_rounded_up = ptr.wrapping_offset(length as isize);
+        while ptr != end_rounded_up {
+            unsafe {
+                message_vec.push(*ptr);
+            }
+            ptr = ptr.wrapping_offset(1);
+        }
+        message_vec
+    }
 }
 
 #[cfg(test)]
@@ -235,6 +248,12 @@ mod tests {
         let duel_builder = OCGDuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
+        duel.start();
+        println!("{:?}", duel.process());
+        let message = duel.get_message();
+        // println!("{:?}", message);
+        // println!("{:?}", u32::from_be_bytes([message[0], message[1], message[2], message[3]]));
+        // println!("{:?}", u32::from_ne_bytes([message[2], message[3], message[4], message[5]]));
         // duel.new_card(OCG_NewCardInfo { team: 0, duelist: 1, code: 1, con: 0, loc: 0, seq: 0, pos: 0 });
     }
 }
