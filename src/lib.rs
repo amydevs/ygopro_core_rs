@@ -160,6 +160,24 @@ impl OCGDuelBuilder {
     }
 }
 
+#[derive(Debug)]
+pub enum OCGDuelStatus {
+    End = OCG_DuelStatus_OCG_DUEL_STATUS_END as isize,
+    Awaiting = OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING as isize,
+    Continue = OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE as isize,
+}
+
+impl From<OCG_DuelStatus> for OCGDuelStatus {
+    fn from(status: OCG_DuelStatus) -> Self {
+        match status {
+            OCG_DuelStatus_OCG_DUEL_STATUS_END => OCGDuelStatus::End,
+            OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING => OCGDuelStatus::Awaiting,
+            OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE => OCGDuelStatus::Continue,
+            _ => panic!("Invalid OCG_DuelStatus"),
+        }
+    }
+}
+
 pub struct OCGDuelInstance {
     ptr: *mut os::raw::c_void,
 }
@@ -188,10 +206,17 @@ impl OCGDuelInstance {
             OCG_DuelNewCard(self.ptr, info);
         }
     }
-    pub fn start_duel(&self) {
+    pub fn start(&self) {
         unsafe {
             OCG_StartDuel(self.ptr);
         }
+    }
+    pub fn destroy(self) {
+        drop(self);
+    }
+    // Processing
+    pub fn process(&self) -> OCGDuelStatus {
+        unsafe { (OCG_DuelProcess(self.ptr) as OCG_DuelStatus).into() }
     }
 }
 
