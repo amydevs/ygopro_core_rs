@@ -2,6 +2,9 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+pub mod error;
+pub use error::*;
+
 use std::*;
 use ygopro_core_rs_sys::*;
 
@@ -231,6 +234,22 @@ impl OCGDuelInstance {
         }
         message_vec
     }
+    pub fn set_response(&self, response: &[u8]) {
+        unsafe {
+            OCG_DuelSetResponse(self.ptr, response.as_ptr() as *const _, response.len() as u32);
+        }
+    }
+    pub fn load_script(&self, src_code: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let src_code = ffi::CString::new(src_code)?;
+        let name_cstr = ffi::CString::new(name)?;
+        let result = unsafe {
+            OCG_LoadScript(self.ptr, src_code.as_ptr(), src_code.to_bytes().len() as u32,name_cstr.as_ptr())
+        };
+        if result == 0 {
+            return Err(Box::new(OCGDuelError::ScriptLoadFailure(name.to_owned())));
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -263,5 +282,21 @@ mod tests {
         assert!(!duel.ptr.is_null());
         duel.start();
         duel.process();
+    }
+    #[test]
+    fn test_get_message_duel() {
+        let duel_builder = OCGDuelBuilder::default();
+        let duel = duel_builder.build();
+        assert!(!duel.ptr.is_null());
+        duel.start();
+        duel.process();
+        duel.get_message();
+    }
+    #[test]
+    fn test_load_script_duel() {
+        let duel_builder = OCGDuelBuilder::default();
+        let duel = duel_builder.build();
+        assert!(!duel.ptr.is_null());
+        assert!(duel.load_script("invalid script", "invalid_script").is_err());
     }
 }

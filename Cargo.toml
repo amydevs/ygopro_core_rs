@@ -11,4 +11,5 @@ members = [
 ]
 
 [dependencies]
+thiserror = "1.0"
 ygopro-core-rs-sys = {path = "./ygopro-core-rs-sys" }
