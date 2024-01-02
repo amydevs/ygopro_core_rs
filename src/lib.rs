@@ -248,10 +248,6 @@ mod tests {
         let duel_builder = OCGDuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
-        // println!("{:?}", message);
-        // println!("{:?}", u32::from_be_bytes([message[0], message[1], message[2], message[3]]));
-        // println!("{:?}", u32::from_ne_bytes([message[2], message[3], message[4], message[5]]));
-        // duel.new_card(OCG_NewCardInfo { team: 0, duelist: 1, code: 1, con: 0, loc: 0, seq: 0, pos: 0 });
     }
     #[test]
     fn test_start_duel() {
