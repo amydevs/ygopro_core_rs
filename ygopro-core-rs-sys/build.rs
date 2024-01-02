@@ -19,6 +19,7 @@ fn main() {
     lua_cc_config.cpp(true);
     lua_cc_config.flag_if_supported("/TP");
     lua_cc_config.flag_if_supported("-std=c++11");
+    lua_cc_config.flag_if_supported("/std:c++11");
 
     if target_os == Ok("linux".to_string()) {
         lua_cc_config.define("LUA_USE_LINUX", None);
@@ -77,6 +78,8 @@ fn main() {
     // compile the ygopro
     let mut ygopro_cc_config = cc::Build::new();
     ygopro_cc_config.warnings(false);
+    ygopro_cc_config.flag_if_supported("-std=c++17");
+    ygopro_cc_config.flag_if_supported("/std:c++17");
     ygopro_cc_config.cpp(true);
 
     println!(
