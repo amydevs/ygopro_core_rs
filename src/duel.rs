@@ -1,38 +1,26 @@
+use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
 use std::ptr::null_mut;
-use std::ffi::{CStr, CString};
 
 use crate::ffi::{
-    OCG_CardData,
-    OCG_DuelOptions,
-    OCG_DuelStatus,
-    OCG_NewCardInfo,
-    OCG_QueryInfo,
-    OCG_DuelStatus_OCG_DUEL_STATUS_END, 
-    OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING,
-    OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE,
-    OCG_GetVersion,
-    OCG_CreateDuel,
-    OCG_DestroyDuel,
-    OCG_DuelNewCard,
-    OCG_DuelProcess,
-    OCG_StartDuel,
-    OCG_DuelGetMessage,
-    OCG_DuelSetResponse,
-    OCG_LoadScript,
-    OCG_DuelQueryCount,
-    OCG_DuelQuery,
-    OCG_DuelQueryLocation,
-    OCG_DuelQueryField,
+    OCG_CardData, OCG_CreateDuel, OCG_DestroyDuel, OCG_DuelGetMessage, OCG_DuelNewCard,
+    OCG_DuelOptions, OCG_DuelProcess, OCG_DuelQuery, OCG_DuelQueryCount, OCG_DuelQueryField,
+    OCG_DuelQueryLocation, OCG_DuelSetResponse, OCG_DuelStatus,
+    OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING, OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE,
+    OCG_DuelStatus_OCG_DUEL_STATUS_END, OCG_GetVersion, OCG_LoadScript, OCG_NewCardInfo,
+    OCG_QueryInfo, OCG_StartDuel,
 };
-use crate::{Player, OCGDuelError};
+
+use crate::card::CardData;
+use crate::error::OCGDuelError;
+use crate::player::Player;
 
 pub struct DuelBuilder {
-    card_handler: Box<dyn FnMut(u32, *mut OCG_CardData) + 'static>,
+    card_handler: Box<dyn FnMut(u32, CardData) + 'static>,
     script_handler: Box<dyn FnMut(&Duel, &str) -> i32 + 'static>,
     script_handler_wrapper: Box<dyn FnMut(*mut c_void, &str) -> i32 + 'static>,
     log_handler: Option<Box<dyn FnMut(&str, i32) + 'static>>,
-    card_read_done_handler: Option<Box<dyn FnMut(*mut OCG_CardData) + 'static>>,
+    card_read_done_handler: Option<Box<dyn FnMut(CardData) + 'static>>,
     seed: [u64; 4],
     flags: u64,
     team_1: Player,
@@ -60,7 +48,7 @@ impl Default for DuelBuilder {
 impl DuelBuilder {
     pub fn set_card_handler<F>(&mut self, callback: F)
     where
-        F: FnMut(u32, *mut OCG_CardData),
+        F: FnMut(u32, CardData),
         F: 'static,
     {
         self.card_handler = Box::new(callback);
@@ -80,8 +68,8 @@ impl DuelBuilder {
         self.log_handler = Some(Box::new(callback));
     }
     extern "C" fn card_handler_ffi(cb: *mut c_void, code: u32, data: *mut OCG_CardData) {
-        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(u32, *mut OCG_CardData)>) };
-        closure(code, data)
+        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(u32, CardData)>) };
+        closure(code, unsafe { data.read().into() })
     }
     extern "C" fn script_handler_ffi(
         cb: *mut c_void,
@@ -89,9 +77,8 @@ impl DuelBuilder {
         name: *const i8,
     ) -> i32 {
         let nameStr = unsafe { CStr::from_ptr(name) };
-        let closure = unsafe {
-            &mut *(cb as *mut Box<dyn for<'a> FnMut(*mut c_void, &'a str) -> i32>)
-        };
+        let closure =
+            unsafe { &mut *(cb as *mut Box<dyn for<'a> FnMut(*mut c_void, &'a str) -> i32>) };
         closure(duel_ptr, nameStr.to_str().unwrap())
     }
     extern "C" fn log_handler_ffi(cb: *mut c_void, msg: *const i8, msg_type: i32) {
@@ -100,13 +87,11 @@ impl DuelBuilder {
         closure(msgStr.to_str().unwrap(), msg_type)
     }
     extern "C" fn card_read_done_handler_ffi(cb: *mut c_void, data: *mut OCG_CardData) {
-        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(*mut OCG_CardData)>) };
-        closure(data)
+        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(CardData)>) };
+        closure(unsafe { data.read().into() })
     }
     pub fn build(mut self) -> Duel {
-        let mut duel = Duel {
-            ptr: null_mut(),
-        };
+        let mut duel = Duel { ptr: null_mut() };
         // This needs to be done so that the script_handler is able to access the duel instance
         // We can assume that the duel instance will be valid for the lifetime of the script_handler,
         // as this is only called on OCGDuelInstance::new_card and OCG_CreateDuel.
