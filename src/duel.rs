@@ -23,8 +23,8 @@ trait ScriptHandlerWrapper: FnMut(*mut c_void, &str) -> i32 + 'static {}
 impl<T: FnMut(*mut c_void, &str) -> i32 + 'static> ScriptHandlerWrapper for T {}
 pub trait LogHandler: FnMut(&str, i32) + 'static {}
 impl<T: FnMut(&str, i32) + 'static> LogHandler for T {}
-pub trait CardReadDoneHandler: FnMut(CardData) + 'static {}
-impl<T: FnMut(CardData) + 'static> CardReadDoneHandler for T {}
+pub trait CardReadDoneHandler: FnMut(&CardData) + 'static {}
+impl<T: FnMut(&CardData) + 'static> CardReadDoneHandler for T {}
 
 pub struct DuelBuilder {
     card_handler: Box<dyn CardHandler>,
@@ -106,7 +106,8 @@ impl DuelBuilder {
     }
     extern "C" fn card_read_done_handler_ffi(cb: *mut c_void, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardReadDoneHandler>) };
-        closure(unsafe { data.read().into() })
+        let card_data: CardData = unsafe { data.read().into() };
+        closure(&card_data)
     }
     pub fn build(mut self) -> Duel {
         let mut duel = Duel { ptr: null_mut() };
