@@ -1,10 +1,12 @@
+use std::collections::HashSet;
+
 use crate::ffi::OCG_CardData;
 
 #[derive(Debug, Clone, Default)]
 pub struct CardData {
     pub code: u32,
     pub alias: u32,
-    pub setcode: u16,
+    pub setcodes: HashSet<u16>,
     pub card_type: u32,
     pub level: u32,
     pub attribute: u32,
@@ -18,21 +20,21 @@ pub struct CardData {
 
 impl From<OCG_CardData> for CardData {
     fn from(value: OCG_CardData) -> Self {
-        // let mut setcodes = HashSet::new();
-        // let mut ptr = value.setcodes;
-        // while !ptr.is_null() {
-        //     unsafe {
-        //         if (*ptr) == 0 {
-        //             break;
-        //         }
-        //         setcodes.insert(*ptr);
-        //     }
-        //     ptr = ptr.wrapping_offset(1);
-        // }
+        let mut setcodes = HashSet::new();
+        let mut ptr = value.setcodes;
+        while !ptr.is_null() {
+            unsafe {
+                if (*ptr) == 0 {
+                    break;
+                }
+                setcodes.insert(*ptr);
+            }
+            ptr = ptr.wrapping_offset(1);
+        }
         Self {
             code: value.code,
             alias: value.alias,
-            setcode: unsafe { *value.setcodes },
+            setcodes: setcodes,
             card_type: value.type_,
             level: value.level,
             attribute: value.attribute,
@@ -48,10 +50,12 @@ impl From<OCG_CardData> for CardData {
 
 impl Into<OCG_CardData> for CardData {
     fn into(self) -> OCG_CardData {
+        let mut setcodes: Vec<u16> = self.setcodes.into_iter().collect();
+        setcodes.push(0);
         OCG_CardData {
             code: self.code,
             alias: self.alias,
-            setcodes: Box::into_raw(Box::new(self.setcode)),
+            setcodes: setcodes.as_mut_ptr(),
             type_: self.card_type,
             level: self.level,
             attribute: self.attribute,
