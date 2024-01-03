@@ -15,8 +15,8 @@ use crate::card::CardData;
 use crate::error::OCGDuelError;
 use crate::player::Player;
 
-pub trait CardHandler: FnMut(u32, CardData) + 'static {}
-impl<T: FnMut(u32, CardData) + 'static> CardHandler for T {}
+pub trait CardHandler: FnMut(u32) -> CardData + 'static {}
+impl<T: FnMut(u32) -> CardData + 'static> CardHandler for T {}
 pub trait ScriptHandler: FnMut(&Duel, &str) -> i32 + 'static {}
 impl<T: FnMut(&Duel, &str) -> i32 + 'static> ScriptHandler for T {}
 trait ScriptHandlerWrapper: FnMut(*mut c_void, &str) -> i32 + 'static {}
@@ -42,7 +42,7 @@ pub struct DuelBuilder {
 impl Default for DuelBuilder {
     fn default() -> DuelBuilder {
         DuelBuilder {
-            card_handler: Box::new(|_, _| ()),
+            card_handler: Box::new(|_| ( CardData::default() )),
             script_handler: Box::new(|_, _| 0),
             script_handler_wrapper: Box::new(|_, _| 0),
             log_handler: Box::new(|_, _| ()),
@@ -87,7 +87,9 @@ impl DuelBuilder {
     }
     extern "C" fn card_handler_ffi(cb: *mut c_void, code: u32, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardHandler>) };
-        closure(code, unsafe { data.read().into() })
+        let card_data: OCG_CardData = closure(code).into();
+        unsafe { data.write(card_data) };
+        
     }
     extern "C" fn script_handler_ffi(
         cb: *mut c_void,
