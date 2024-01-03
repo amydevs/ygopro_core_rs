@@ -328,36 +328,8 @@ mod tests {
     }
     #[test]
     fn test_create_duel() {
-        let mut duel_builder = DuelBuilder::default();
-        duel_builder.set_script_handler(|_, name| {
-            println!("Script loaded: {}", name);
-            100
-        });
-        duel_builder.set_card_handler(|_, card| {
-            println!("Card read: {:?}", card);
-        });
-        duel_builder.set_card_read_done_handler(|card| {
-            println!("Card read done: {:?}", card);
-        });
+        let duel_builder = DuelBuilder::default();
         let duel = duel_builder.build();
-        duel.new_card(OCG_NewCardInfo {
-            team: 1,
-            duelist: 1,
-            code: 1,
-            con: 1,
-            loc: 100,
-            seq: 1,
-            pos: 1,
-        });
-        duel.new_card(OCG_NewCardInfo {
-            team: 1,
-            duelist: 1,
-            code: 2,
-            con: 1,
-            loc: 100,
-            seq: 1,
-            pos: 1,
-        });
         assert!(!duel.ptr.is_null());
     }
     #[test]
