@@ -60,7 +60,7 @@ impl Into<OCG_CardData> for CardData {
             defense: self.defense,
             lscale: self.lscale,
             rscale: self.rscale,
-            link_marker: self.link_marker
+            link_marker: self.link_marker,
         }
     }
 }
