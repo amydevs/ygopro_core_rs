@@ -247,17 +247,30 @@ impl Duel {
     /// The contents of the provided buffer are copied internally.
     pub fn set_response(&self, response: &[u8]) {
         unsafe {
-            OCG_DuelSetResponse(self.ptr, response.as_ptr() as *const _, response.len() as u32);
+            OCG_DuelSetResponse(
+                self.ptr,
+                response.as_ptr() as *const _,
+                response.len() as u32,
+            );
         }
     }
     /// Load a Lua card script or supporting script for the specified duel.
     /// Generally you do not call this directly except to load global scripts;
     /// instead you want to call this from your handler provided to [`set_script_handler`](struct.DuelBuilder.html#method.set_script_handler).
-    pub fn load_script(&self, src_code: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_script(
+        &self,
+        src_code: &str,
+        name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let src_code = ffi::CString::new(src_code)?;
         let name_cstr = ffi::CString::new(name)?;
         let result = unsafe {
-            OCG_LoadScript(self.ptr, src_code.as_ptr(), src_code.to_bytes().len() as u32,name_cstr.as_ptr())
+            OCG_LoadScript(
+                self.ptr,
+                src_code.as_ptr(),
+                src_code.to_bytes().len() as u32,
+                name_cstr.as_ptr(),
+            )
         };
         if result == 0 {
             return Err(Box::new(OCGDuelError::ScriptLoadFailure(name.to_owned())));
@@ -284,7 +297,8 @@ impl Duel {
     }
     pub fn query_location(&self, query_info: OCG_QueryInfo) -> Vec<u8> {
         let mut length: u32 = 0;
-        let mut ptr = unsafe { OCG_DuelQueryLocation(self.ptr, &mut length, query_info) as *const u8 };
+        let mut ptr =
+            unsafe { OCG_DuelQueryLocation(self.ptr, &mut length, query_info) as *const u8 };
         let mut result_vec: Vec<u8> = Vec::with_capacity(length as usize);
         let end_rounded_up = ptr.wrapping_offset(length as isize);
         while ptr != end_rounded_up {
@@ -355,6 +369,8 @@ mod tests {
         let duel_builder = DuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
-        assert!(duel.load_script("invalid script", "invalid_script").is_err());
+        assert!(duel
+            .load_script("invalid script", "invalid_script")
+            .is_err());
     }
 }
