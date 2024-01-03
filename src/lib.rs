@@ -8,15 +8,15 @@ pub use error::*;
 use std::*;
 use ygopro_core_rs_sys::*;
 
-pub struct OCGPlayer {
+pub struct Player {
     starting_lp: u32,
     starting_draw_count: u32,
     draw_count_per_turn: u32,
 }
 
-impl Default for OCGPlayer {
-    fn default() -> OCGPlayer {
-        OCGPlayer {
+impl Default for Player {
+    fn default() -> Player {
+        Player {
             starting_lp: 8000,
             starting_draw_count: 5,
             draw_count_per_turn: 1,
@@ -24,8 +24,8 @@ impl Default for OCGPlayer {
     }
 }
 
-impl From<OCGPlayer> for OCG_Player {
-    fn from(val: OCGPlayer) -> Self {
+impl From<Player> for OCG_Player {
+    fn from(val: Player) -> Self {
         OCG_Player {
             startingLP: val.starting_lp,
             startingDrawCount: val.starting_draw_count,
@@ -34,22 +34,22 @@ impl From<OCGPlayer> for OCG_Player {
     }
 }
 
-pub struct OCGDuelBuilder {
+pub struct DuelBuilder {
     card_handler: Box<dyn FnMut(u32, *mut OCG_CardData) + 'static>,
-    script_handler: Box<dyn FnMut(&OCGDuelInstance, &str) -> i32 + 'static>,
+    script_handler: Box<dyn FnMut(&Duel, &str) -> i32 + 'static>,
     script_handler_wrapper: Box<dyn FnMut(*mut os::raw::c_void, &str) -> i32 + 'static>,
     log_handler: Option<Box<dyn FnMut(&str, i32) + 'static>>,
     card_read_done_handler: Option<Box<dyn FnMut(*mut OCG_CardData) + 'static>>,
     seed: [u64; 4],
     flags: u64,
-    team_1: OCGPlayer,
-    team_2: OCGPlayer,
+    team_1: Player,
+    team_2: Player,
     enable_unsafe_libraries: bool,
 }
 
-impl Default for OCGDuelBuilder {
-    fn default() -> OCGDuelBuilder {
-        OCGDuelBuilder {
+impl Default for DuelBuilder {
+    fn default() -> DuelBuilder {
+        DuelBuilder {
             card_handler: Box::new(|_, _| ()),
             script_handler: Box::new(|_, _| 0),
             script_handler_wrapper: Box::new(|_, _| 0),
@@ -57,14 +57,14 @@ impl Default for OCGDuelBuilder {
             card_read_done_handler: None,
             seed: [0; 4],
             flags: 0,
-            team_1: OCGPlayer::default(),
-            team_2: OCGPlayer::default(),
+            team_1: Player::default(),
+            team_2: Player::default(),
             enable_unsafe_libraries: true,
         }
     }
 }
 
-impl OCGDuelBuilder {
+impl DuelBuilder {
     pub fn set_card_handler<F>(&mut self, callback: F)
     where
         F: FnMut(u32, *mut OCG_CardData),
@@ -74,7 +74,7 @@ impl OCGDuelBuilder {
     }
     pub fn set_script_handler<F>(&mut self, callback: F)
     where
-        F: FnMut(&OCGDuelInstance, &str) -> i32,
+        F: FnMut(&Duel, &str) -> i32,
         F: 'static,
     {
         self.script_handler = Box::new(callback);
@@ -110,8 +110,8 @@ impl OCGDuelBuilder {
         let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(*mut OCG_CardData)>) };
         closure(data)
     }
-    pub fn build(mut self) -> OCGDuelInstance {
-        let mut duel = OCGDuelInstance {
+    pub fn build(mut self) -> Duel {
+        let mut duel = Duel {
             ptr: std::ptr::null_mut(),
         };
         // This needs to be done so that the script_handler is able to access the duel instance
@@ -121,7 +121,7 @@ impl OCGDuelBuilder {
         // so that the instance will have the correct pointer when OCG_CreateDuel is called.
         // `duel` should never go out of scope during construction.
         // If it does, this would become a memory leak, as the pointer would be lost before it is properly set in OCG_CreateDuel.
-        let mut_ptr = &mut duel as *mut OCGDuelInstance;
+        let mut_ptr = &mut duel as *mut Duel;
         self.script_handler_wrapper = Box::new(move |duel_ptr, name| {
             if duel_ptr != mut_ptr as *mut _ {
                 unsafe {
@@ -166,28 +166,28 @@ impl OCGDuelBuilder {
 }
 
 #[derive(Debug)]
-pub enum OCGDuelStatus {
+pub enum DuelStatus {
     End = OCG_DuelStatus_OCG_DUEL_STATUS_END as isize,
     Awaiting = OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING as isize,
     Continue = OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE as isize,
 }
 
-impl From<OCG_DuelStatus> for OCGDuelStatus {
+impl From<OCG_DuelStatus> for DuelStatus {
     fn from(status: OCG_DuelStatus) -> Self {
         match status {
-            OCG_DuelStatus_OCG_DUEL_STATUS_END => OCGDuelStatus::End,
-            OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING => OCGDuelStatus::Awaiting,
-            OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE => OCGDuelStatus::Continue,
+            OCG_DuelStatus_OCG_DUEL_STATUS_END => DuelStatus::End,
+            OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING => DuelStatus::Awaiting,
+            OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE => DuelStatus::Continue,
             _ => panic!("Invalid OCG_DuelStatus"),
         }
     }
 }
 
-pub struct OCGDuelInstance {
+pub struct Duel {
     ptr: *mut os::raw::c_void,
 }
 
-impl Drop for OCGDuelInstance {
+impl Drop for Duel {
     fn drop(&mut self) {
         unsafe {
             OCG_DestroyDuel(self.ptr);
@@ -195,7 +195,7 @@ impl Drop for OCGDuelInstance {
     }
 }
 
-impl OCGDuelInstance {
+impl Duel {
     // Informative
     pub fn get_version() -> [i32; 2] {
         let mut major_version: i32 = 0;
@@ -223,7 +223,7 @@ impl OCGDuelInstance {
     }
     // Processing
     /// Runs the state machine to start the duel or after a waiting state requiring a player response.
-    pub fn process(&self) -> OCGDuelStatus {
+    pub fn process(&self) -> DuelStatus {
         unsafe { (OCG_DuelProcess(self.ptr) as OCG_DuelStatus).into() }
     }
     /// The main interface to the simulation.
@@ -252,7 +252,7 @@ impl OCGDuelInstance {
     }
     /// Load a Lua card script or supporting script for the specified duel.
     /// Generally you do not call this directly except to load global scripts;
-    /// instead you want to call this from your handler provided to [`set_script_handler`](struct.OCGDuelBuilder.html#method.set_script_handler).
+    /// instead you want to call this from your handler provided to [`set_script_handler`](struct.DuelBuilder.html#method.set_script_handler).
     pub fn load_script(&self, src_code: &str, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let src_code = ffi::CString::new(src_code)?;
         let name_cstr = ffi::CString::new(name)?;
@@ -316,26 +316,26 @@ mod tests {
 
     #[test]
     fn test_get_version() {
-        let version = OCGDuelInstance::get_version();
+        let version = Duel::get_version();
         assert!(version[0] == 10);
         assert!(version[1] == 0);
     }
     #[test]
     fn test_create_duel() {
-        let duel_builder = OCGDuelBuilder::default();
+        let duel_builder = DuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
     }
     #[test]
     fn test_start_duel() {
-        let duel_builder = OCGDuelBuilder::default();
+        let duel_builder = DuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
         duel.start();
     }
     #[test]
     fn test_process_duel() {
-        let duel_builder = OCGDuelBuilder::default();
+        let duel_builder = DuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
         duel.start();
@@ -343,7 +343,7 @@ mod tests {
     }
     #[test]
     fn test_get_message_duel() {
-        let duel_builder = OCGDuelBuilder::default();
+        let duel_builder = DuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
         duel.start();
@@ -352,7 +352,7 @@ mod tests {
     }
     #[test]
     fn test_load_script_duel() {
-        let duel_builder = OCGDuelBuilder::default();
+        let duel_builder = DuelBuilder::default();
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
         assert!(duel.load_script("invalid script", "invalid_script").is_err());
