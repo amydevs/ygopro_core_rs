@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use crate::ffi::OCG_CardData;
 
+#[derive(Debug, Clone)]
 pub struct CardData {
     pub code: u32,
     pub alias: u32,

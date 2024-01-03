@@ -30,8 +30,8 @@ pub struct DuelBuilder {
     card_handler: Box<dyn CardHandler>,
     script_handler: Box<dyn ScriptHandler>,
     script_handler_wrapper: Box<dyn ScriptHandlerWrapper>,
-    log_handler: Option<Box<dyn LogHandler>>,
-    card_read_done_handler: Option<Box<dyn CardReadDoneHandler>>,
+    log_handler: Box<dyn LogHandler>,
+    card_read_done_handler: Box<dyn CardReadDoneHandler>,
     seed: [u64; 4],
     flags: u64,
     team_1: Player,
@@ -45,8 +45,8 @@ impl Default for DuelBuilder {
             card_handler: Box::new(|_, _| ()),
             script_handler: Box::new(|_, _| 0),
             script_handler_wrapper: Box::new(|_, _| 0),
-            log_handler: None,
-            card_read_done_handler: None,
+            log_handler: Box::new(|_, _| ()),
+            card_read_done_handler: Box::new(|_| ()),
             seed: [0; 4],
             flags: 0,
             team_1: Player::default(),
@@ -76,14 +76,14 @@ impl DuelBuilder {
         F: LogHandler,
         F: 'static,
     {
-        self.log_handler = Some(Box::new(callback));
+        self.log_handler = Box::new(callback);
     }
     pub fn set_card_read_done_handler<F>(&mut self, callback: F)
     where
         F: CardReadDoneHandler,
         F: 'static,
     {
-        self.card_read_done_handler = Some(Box::new(callback));
+        self.card_read_done_handler = Box::new(callback);
     }
     extern "C" fn card_handler_ffi(cb: *mut c_void, code: u32, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardHandler>) };
@@ -137,17 +137,10 @@ impl DuelBuilder {
             payload1: Box::into_raw(Box::new(self.card_handler)) as *mut _,
             scriptReader: Some(Self::script_handler_ffi),
             payload2: Box::into_raw(Box::new(self.script_handler_wrapper)) as *mut _,
-            logHandler: self.log_handler.as_ref().and(Some(Self::log_handler_ffi)),
-            payload3: self
-                .log_handler
-                .map_or(null_mut(), |cb| Box::into_raw(cb) as *mut _),
-            cardReaderDone: self
-                .card_read_done_handler
-                .as_ref()
-                .and(Some(Self::card_read_done_handler_ffi)),
-            payload4: self
-                .card_read_done_handler
-                .map_or(null_mut(), |cb| Box::into_raw(cb) as *mut _),
+            logHandler: Some(Self::log_handler_ffi),
+            payload3: Box::into_raw(Box::new(self.log_handler)) as *mut _,
+            cardReaderDone: Some(Self::card_read_done_handler_ffi),
+            payload4: Box::into_raw(Box::new(self.card_read_done_handler)) as *mut _,
             seed: self.seed,
             flags: self.flags,
             team1: self.team_1.into(),
@@ -179,6 +172,7 @@ impl From<OCG_DuelStatus> for DuelStatus {
     }
 }
 
+#[derive(Debug)]
 pub struct Duel {
     ptr: *mut c_void,
 }
@@ -335,8 +329,20 @@ mod tests {
     }
     #[test]
     fn test_create_duel() {
-        let duel_builder = DuelBuilder::default();
+        let mut duel_builder = DuelBuilder::default();
+        duel_builder.set_script_handler(|_, name| { 
+            println!("Script loaded: {}", name);
+            100
+         });
+        duel_builder.set_card_handler(|_, card| {
+            println!("Card read: {:?}", card);
+        });
+        duel_builder.set_card_read_done_handler(|card| {
+            println!("Card read done: {:?}", card);
+        });
         let duel = duel_builder.build();
+        duel.new_card(OCG_NewCardInfo { team: 1, duelist: 1, code: 1, con: 1, loc: 100, seq: 1, pos: 1 });
+        duel.new_card(OCG_NewCardInfo { team: 1, duelist: 1, code: 2, con: 1, loc: 100, seq: 1, pos: 1 });
         assert!(!duel.ptr.is_null());
     }
     #[test]

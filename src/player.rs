@@ -1,5 +1,6 @@
 use crate::ffi::OCG_Player;
 
+#[derive(Debug, Clone)]
 pub struct Player {
     starting_lp: u32,
     starting_draw_count: u32,
