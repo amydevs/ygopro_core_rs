@@ -95,8 +95,7 @@ impl DuelBuilder {
         name: *const i8,
     ) -> i32 {
         let nameStr = unsafe { CStr::from_ptr(name) };
-        let closure =
-            unsafe { &mut *(cb as *mut Box<dyn ScriptHandlerWrapper>) };
+        let closure = unsafe { &mut *(cb as *mut Box<dyn ScriptHandlerWrapper>) };
         closure(duel_ptr, nameStr.to_str().unwrap())
     }
     extern "C" fn log_handler_ffi(cb: *mut c_void, msg: *const i8, msg_type: i32) {
@@ -330,10 +329,10 @@ mod tests {
     #[test]
     fn test_create_duel() {
         let mut duel_builder = DuelBuilder::default();
-        duel_builder.set_script_handler(|_, name| { 
+        duel_builder.set_script_handler(|_, name| {
             println!("Script loaded: {}", name);
             100
-         });
+        });
         duel_builder.set_card_handler(|_, card| {
             println!("Card read: {:?}", card);
         });
@@ -341,8 +340,24 @@ mod tests {
             println!("Card read done: {:?}", card);
         });
         let duel = duel_builder.build();
-        duel.new_card(OCG_NewCardInfo { team: 1, duelist: 1, code: 1, con: 1, loc: 100, seq: 1, pos: 1 });
-        duel.new_card(OCG_NewCardInfo { team: 1, duelist: 1, code: 2, con: 1, loc: 100, seq: 1, pos: 1 });
+        duel.new_card(OCG_NewCardInfo {
+            team: 1,
+            duelist: 1,
+            code: 1,
+            con: 1,
+            loc: 100,
+            seq: 1,
+            pos: 1,
+        });
+        duel.new_card(OCG_NewCardInfo {
+            team: 1,
+            duelist: 1,
+            code: 2,
+            con: 1,
+            loc: 100,
+            seq: 1,
+            pos: 1,
+        });
         assert!(!duel.ptr.is_null());
     }
     #[test]
