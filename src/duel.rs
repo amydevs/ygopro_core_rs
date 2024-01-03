@@ -15,12 +15,23 @@ use crate::card::CardData;
 use crate::error::OCGDuelError;
 use crate::player::Player;
 
+pub trait CardHandler: FnMut(u32, CardData) + 'static {}
+impl<T: FnMut(u32, CardData) + 'static> CardHandler for T {}
+pub trait ScriptHandler: FnMut(&Duel, &str) -> i32 + 'static {}
+impl<T: FnMut(&Duel, &str) -> i32 + 'static> ScriptHandler for T {}
+trait ScriptHandlerWrapper: FnMut(*mut c_void, &str) -> i32 + 'static {}
+impl<T: FnMut(*mut c_void, &str) -> i32 + 'static> ScriptHandlerWrapper for T {}
+pub trait LogHandler: FnMut(&str, i32) + 'static {}
+impl<T: FnMut(&str, i32) + 'static> LogHandler for T {}
+pub trait CardReadDoneHandler: FnMut(CardData) + 'static {}
+impl<T: FnMut(CardData) + 'static> CardReadDoneHandler for T {}
+
 pub struct DuelBuilder {
-    card_handler: Box<dyn FnMut(u32, CardData) + 'static>,
-    script_handler: Box<dyn FnMut(&Duel, &str) -> i32 + 'static>,
-    script_handler_wrapper: Box<dyn FnMut(*mut c_void, &str) -> i32 + 'static>,
-    log_handler: Option<Box<dyn FnMut(&str, i32) + 'static>>,
-    card_read_done_handler: Option<Box<dyn FnMut(CardData) + 'static>>,
+    card_handler: Box<dyn CardHandler>,
+    script_handler: Box<dyn ScriptHandler>,
+    script_handler_wrapper: Box<dyn ScriptHandlerWrapper>,
+    log_handler: Option<Box<dyn LogHandler>>,
+    card_read_done_handler: Option<Box<dyn CardReadDoneHandler>>,
     seed: [u64; 4],
     flags: u64,
     team_1: Player,
@@ -48,27 +59,34 @@ impl Default for DuelBuilder {
 impl DuelBuilder {
     pub fn set_card_handler<F>(&mut self, callback: F)
     where
-        F: FnMut(u32, CardData),
+        F: CardHandler,
         F: 'static,
     {
         self.card_handler = Box::new(callback);
     }
     pub fn set_script_handler<F>(&mut self, callback: F)
     where
-        F: FnMut(&Duel, &str) -> i32,
+        F: ScriptHandler,
         F: 'static,
     {
         self.script_handler = Box::new(callback);
     }
     pub fn set_log_handler<F>(&mut self, callback: F)
     where
-        F: FnMut(&str, i32),
+        F: LogHandler,
         F: 'static,
     {
         self.log_handler = Some(Box::new(callback));
     }
+    pub fn set_card_read_done_handler<F>(&mut self, callback: F)
+    where
+        F: CardReadDoneHandler,
+        F: 'static,
+    {
+        self.card_read_done_handler = Some(Box::new(callback));
+    }
     extern "C" fn card_handler_ffi(cb: *mut c_void, code: u32, data: *mut OCG_CardData) {
-        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(u32, CardData)>) };
+        let closure = unsafe { &mut *(cb as *mut Box<dyn CardHandler>) };
         closure(code, unsafe { data.read().into() })
     }
     extern "C" fn script_handler_ffi(
@@ -78,16 +96,16 @@ impl DuelBuilder {
     ) -> i32 {
         let nameStr = unsafe { CStr::from_ptr(name) };
         let closure =
-            unsafe { &mut *(cb as *mut Box<dyn for<'a> FnMut(*mut c_void, &'a str) -> i32>) };
+            unsafe { &mut *(cb as *mut Box<dyn ScriptHandlerWrapper>) };
         closure(duel_ptr, nameStr.to_str().unwrap())
     }
     extern "C" fn log_handler_ffi(cb: *mut c_void, msg: *const i8, msg_type: i32) {
         let msgStr = unsafe { CStr::from_ptr(msg) };
-        let closure = unsafe { &mut *(cb as *mut Box<dyn for<'a> FnMut(&'a str, i32)>) };
+        let closure = unsafe { &mut *(cb as *mut Box<dyn LogHandler>) };
         closure(msgStr.to_str().unwrap(), msg_type)
     }
     extern "C" fn card_read_done_handler_ffi(cb: *mut c_void, data: *mut OCG_CardData) {
-        let closure = unsafe { &mut *(cb as *mut Box<dyn FnMut(CardData)>) };
+        let closure = unsafe { &mut *(cb as *mut Box<dyn CardReadDoneHandler>) };
         closure(unsafe { data.read().into() })
     }
     pub fn build(mut self) -> Duel {
@@ -182,6 +200,9 @@ impl Duel {
             OCG_GetVersion(&mut major_version, &mut minor_version);
         }
         [major_version, minor_version]
+    }
+    pub fn get_raw_ptr(&self) -> *mut c_void {
+        self.ptr
     }
     // Lifecycle
     pub fn new_card(&self, info: OCG_NewCardInfo) {
@@ -340,7 +361,6 @@ mod tests {
         assert!(!duel.ptr.is_null());
         duel.start();
         duel.process();
-        println!("{:?}", duel.get_message());
     }
     #[test]
     fn test_load_script_duel() {
