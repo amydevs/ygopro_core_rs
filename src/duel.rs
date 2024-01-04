@@ -366,4 +366,27 @@ mod tests {
             .load_script("invalid script", "invalid_script")
             .is_err());
     }
+    #[test]
+    fn test_new_card_duel() {
+        let mut duel_builder = DuelBuilder::default();
+        let card_code = 100;
+        duel_builder.set_card_handler(|code| {
+            let mut card_data = CardData::default();
+            card_data.code = code;
+            card_data
+        });
+        duel_builder.set_card_read_done_handler(move |card| {
+            assert!(card.code == card_code);
+        });
+        let duel = duel_builder.build();
+        duel.new_card(OCG_NewCardInfo {
+            team: 1,
+            duelist: 1,
+            code: card_code,
+            con: 1,
+            loc: 1,
+            seq: 1,
+            pos: 1,
+        })
+    }
 }
