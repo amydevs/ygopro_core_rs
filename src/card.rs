@@ -31,10 +31,11 @@ impl From<OCG_CardData> for CardData {
             }
             ptr = ptr.wrapping_offset(1);
         }
+        println!("{:?}", setcodes);
         Self {
             code: value.code,
             alias: value.alias,
-            setcodes: setcodes,
+            setcodes,
             card_type: value.type_,
             level: value.level,
             attribute: value.attribute,
@@ -48,14 +49,22 @@ impl From<OCG_CardData> for CardData {
     }
 }
 
-impl Into<OCG_CardData> for CardData {
-    fn into(self) -> OCG_CardData {
-        let mut setcodes: Vec<u16> = self.setcodes.into_iter().collect();
+impl CardData {
+    fn into_ocg_carddata_internal(self, forget: bool) -> OCG_CardData {
+        let mut setcodes = Vec::with_capacity(self.setcodes.len() + 1);
+        for setcode in self.setcodes.into_iter() {
+            setcodes.push(setcode);
+        }
         setcodes.push(0);
+        setcodes.shrink_to_fit();
+        let ptr = setcodes.as_mut_ptr();
+        if forget {
+            std::mem::forget(setcodes);
+        }
         OCG_CardData {
             code: self.code,
             alias: self.alias,
-            setcodes: setcodes.as_mut_ptr(),
+            setcodes: ptr,
             type_: self.card_type,
             level: self.level,
             attribute: self.attribute,
@@ -66,5 +75,19 @@ impl Into<OCG_CardData> for CardData {
             rscale: self.rscale,
             link_marker: self.link_marker,
         }
+    }
+    /// # Warning
+    /// This method will make the internal Vec<u16> created for the setcode pointer to be forgotten by the Rust borrow checker.
+    /// This should only be used internally, and in cases where there is a deallocation mecanism set.
+    /// Deallocation of setcodes should be done in set_card_read_done_handler.
+    /// https://stackoverflow.com/questions/39224904/how-to-expose-a-rust-vect-to-ffi
+    pub fn into_ocg_carddata_forgetful(self) -> OCG_CardData {
+        self.into_ocg_carddata_internal(true)
+    }
+}
+
+impl From<CardData> for OCG_CardData {
+    fn from(val: CardData) -> Self {
+        val.into_ocg_carddata_internal(false)
     }
 }

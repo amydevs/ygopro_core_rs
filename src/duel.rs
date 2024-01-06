@@ -1,5 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
+use std::println;
 use std::ptr::null_mut;
 
 use crate::ffi::{
@@ -87,8 +88,8 @@ impl DuelBuilder {
     }
     extern "C" fn card_handler_ffi(cb: *mut c_void, code: u32, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardHandler>) };
-        let card_data: OCG_CardData = closure(code).into();
-        unsafe { data.write(card_data) };
+        let card_data: CardData = closure(code);
+        unsafe { data.write(card_data.into_ocg_carddata_forgetful()) };
     }
     extern "C" fn script_handler_ffi(
         cb: *mut c_void,
@@ -107,6 +108,17 @@ impl DuelBuilder {
     extern "C" fn card_read_done_handler_ffi(cb: *mut c_void, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardReadDoneHandler>) };
         let card_data: CardData = unsafe { data.read().into() };
+        let mut setcode_ptr = unsafe { data.read().setcodes };
+        while !setcode_ptr.is_null() {
+            unsafe {
+                if (*setcode_ptr) == 0 {
+                    std::mem::drop(setcode_ptr);
+                    break;
+                }
+                std::mem::drop(setcode_ptr);
+            }
+            setcode_ptr = setcode_ptr.wrapping_offset(1);
+        }
         closure(&card_data)
     }
     pub fn build(mut self) -> Duel {
@@ -373,6 +385,7 @@ mod tests {
         duel_builder.set_card_handler(|code| {
             let mut card_data = CardData::default();
             card_data.code = code;
+            card_data.setcodes.insert(1);
             card_data
         });
         duel_builder.set_card_read_done_handler(move |card| {
