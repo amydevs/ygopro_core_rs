@@ -292,11 +292,7 @@ impl Duel {
     /// Load a Lua card script or supporting script for the specified duel.
     /// Generally you do not call this directly except to load global scripts;
     /// instead you want to call this from your handler provided to [`set_script_handler`](struct.DuelBuilder.html#method.set_script_handler).
-    pub fn load_script(
-        &self,
-        src_code: &str,
-        name: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_script(&self, src_code: &str, name: &str) -> Result<(), DuelError> {
         let src_code = CString::new(src_code)?;
         let name_cstr = CString::new(name)?;
         let result = unsafe {
@@ -308,7 +304,7 @@ impl Duel {
             )
         };
         if result == 0 {
-            return Err(Box::new(DuelError::ScriptLoadFailure(name.to_owned())));
+            return Err(DuelError::ScriptLoadFailure(name.to_owned()));
         }
         Ok(())
     }

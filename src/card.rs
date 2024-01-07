@@ -13,16 +13,16 @@ pub struct NewCardInfo {
     pub pos: u32,
 }
 
-impl Into<OCG_NewCardInfo> for NewCardInfo {
-    fn into(self) -> OCG_NewCardInfo {
+impl From<NewCardInfo> for OCG_NewCardInfo {
+    fn from(val: NewCardInfo) -> Self {
         OCG_NewCardInfo {
-            team: self.team,
-            duelist: self.duelist,
-            code: self.code,
-            con: self.con,
-            loc: self.loc,
-            seq: self.seq,
-            pos: self.pos,
+            team: val.team,
+            duelist: val.duelist,
+            code: val.code,
+            con: val.con,
+            loc: val.loc,
+            seq: val.seq,
+            pos: val.pos,
         }
     }
 }
