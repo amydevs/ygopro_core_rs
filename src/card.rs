@@ -50,7 +50,7 @@ impl From<OCG_CardData> for CardData {
 }
 
 impl CardData {
-    fn into_ocg_carddata_internal(self, forget: bool) -> OCG_CardData {
+    fn into_ocg_carddata_internal(self, leaky: bool) -> OCG_CardData {
         let mut setcodes = Vec::with_capacity(self.setcodes.len() + 1);
         for setcode in self.setcodes.into_iter() {
             setcodes.push(setcode);
@@ -58,7 +58,7 @@ impl CardData {
         setcodes.push(0);
         setcodes.shrink_to_fit();
         let ptr = setcodes.as_mut_ptr();
-        if forget {
+        if leaky {
             std::mem::forget(setcodes);
         }
         OCG_CardData {
@@ -81,7 +81,7 @@ impl CardData {
     /// This should only be used internally, and in cases where there is a deallocation mecanism set.
     /// Deallocation of setcodes should be done in set_card_read_done_handler.
     /// https://stackoverflow.com/questions/39224904/how-to-expose-a-rust-vect-to-ffi
-    pub fn into_ocg_carddata_forgetful(self) -> OCG_CardData {
+    pub fn into_ocg_carddata_leaky(self) -> OCG_CardData {
         self.into_ocg_carddata_internal(true)
     }
 }

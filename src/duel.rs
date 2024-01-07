@@ -89,7 +89,7 @@ impl DuelBuilder {
     extern "C" fn card_handler_ffi(cb: *mut c_void, code: u32, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardHandler>) };
         let card_data: CardData = closure(code);
-        unsafe { data.write(card_data.into_ocg_carddata_forgetful()) };
+        unsafe { data.write(card_data.into_ocg_carddata_leaky()) };
     }
     extern "C" fn script_handler_ffi(
         cb: *mut c_void,
