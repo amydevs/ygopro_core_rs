@@ -1,6 +1,5 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
-
 use std::ptr::null_mut;
 
 use crate::ffi::{
@@ -11,9 +10,8 @@ use crate::ffi::{
     OCG_DuelStatus_OCG_DUEL_STATUS_END, OCG_GetVersion, OCG_LoadScript, OCG_QueryInfo,
     OCG_StartDuel,
 };
-use crate::NewCardInfo;
 
-use crate::card::CardData;
+use crate::card::{CardData, NewCardInfo};
 use crate::error::DuelError;
 use crate::player::Player;
 
@@ -100,14 +98,14 @@ impl DuelBuilder {
         duel_ptr: *mut c_void,
         name: *const i8,
     ) -> i32 {
-        let nameStr = unsafe { CStr::from_ptr(name) };
+        let name_str = unsafe { CStr::from_ptr(name) };
         let closure = unsafe { &mut *(cb as *mut Box<dyn ScriptHandlerWrapper>) };
-        closure(duel_ptr, nameStr.to_str().unwrap())
+        closure(duel_ptr, name_str.to_str().unwrap())
     }
     extern "C" fn log_handler_ffi(cb: *mut c_void, msg: *const i8, msg_type: i32) {
-        let msgStr = unsafe { CStr::from_ptr(msg) };
+        let msg_str = unsafe { CStr::from_ptr(msg) };
         let closure = unsafe { &mut *(cb as *mut Box<dyn LogHandler>) };
-        closure(msgStr.to_str().unwrap(), msg_type)
+        closure(msg_str.to_str().unwrap(), msg_type)
     }
     extern "C" fn card_read_done_handler_ffi(cb: *mut c_void, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardReadDoneHandler>) };
@@ -132,6 +130,21 @@ impl DuelBuilder {
             drop(unsafe { Vec::from_raw_parts(setcode_ptr, len, len) });
         }
         closure(&card_data)
+    }
+    pub fn set_seed(&mut self, seed: [u64; 4]) {
+        self.seed = seed;
+    }
+    pub fn set_flags(&mut self, flags: u64) {
+        self.flags = flags;
+    }
+    pub fn set_team_1(&mut self, player: Player) {
+        self.team_1 = player;
+    }
+    pub fn set_team_2(&mut self, player: Player) {
+        self.team_2 = player;
+    }
+    pub fn set_enable_unsafe_libraries(&mut self, enable: bool) {
+        self.enable_unsafe_libraries = enable;
     }
     pub fn build(mut self) -> Duel {
         let mut duel = Duel { ptr: null_mut() };
@@ -188,6 +201,7 @@ pub enum DuelStatus {
 
 impl From<OCG_DuelStatus> for DuelStatus {
     fn from(status: OCG_DuelStatus) -> Self {
+        #![allow(non_upper_case_globals)]
         match status {
             OCG_DuelStatus_OCG_DUEL_STATUS_END => DuelStatus::End,
             OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING => DuelStatus::Awaiting,

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::mem::forget;
 
 use crate::ffi::{OCG_CardData, OCG_NewCardInfo};
 
@@ -88,7 +89,7 @@ impl CardData {
         setcodes.shrink_to_fit();
         let ptr = setcodes.as_mut_ptr();
         if leaky {
-            std::mem::forget(setcodes);
+            forget(setcodes);
         }
         OCG_CardData {
             code: self.code,
