@@ -1,6 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
-use std::println;
+
 use std::ptr::null_mut;
 
 use crate::ffi::{
@@ -108,16 +108,24 @@ impl DuelBuilder {
     extern "C" fn card_read_done_handler_ffi(cb: *mut c_void, data: *mut OCG_CardData) {
         let closure = unsafe { &mut *(cb as *mut Box<dyn CardReadDoneHandler>) };
         let card_data: CardData = unsafe { data.read().into() };
-        let mut setcode_ptr = unsafe { data.read().setcodes };
-        while !setcode_ptr.is_null() {
-            unsafe {
-                if (*setcode_ptr) == 0 {
-                    std::mem::drop(setcode_ptr);
-                    break;
+        // deallocate setcodes once it has been copied to card_data
+        let setcode_ptr = unsafe { data.read().setcodes };
+        if !setcode_ptr.is_null() {
+            let mut iterate_setcode_ptr = setcode_ptr;
+            let mut len = 0;
+            loop {
+                len += 1;
+                unsafe {
+                    if (*iterate_setcode_ptr) == 0 {
+                        break;
+                    }
                 }
-                std::mem::drop(setcode_ptr);
+                iterate_setcode_ptr = iterate_setcode_ptr.wrapping_offset(1);
             }
-            setcode_ptr = setcode_ptr.wrapping_offset(1);
+            // Cast into a Vec to bring it into the borrow checked world, dropping it immediately.
+            // Capacity SHOULD be the length of the array, we obviously can't guarantee it.
+            // But we can assume it is, as the vector capacity is constructed with the length of the array in card.rs.
+            drop(unsafe { Vec::from_raw_parts(setcode_ptr, len, len) });
         }
         closure(&card_data)
     }
