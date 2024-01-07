@@ -31,7 +31,6 @@ impl From<OCG_CardData> for CardData {
             }
             ptr = ptr.wrapping_offset(1);
         }
-        println!("{:?}", setcodes);
         Self {
             code: value.code,
             alias: value.alias,
