@@ -6,6 +6,9 @@ use crate::ffi::OCG_CardData;
 pub struct CardData {
     pub code: u32,
     pub alias: u32,
+    /// # Warning
+    /// Any values of 0 in the hashset are ignored,
+    /// as it is the sentinal value used to indicate the end of the buffer converted and not a valid setcode anyway.
     pub setcodes: HashSet<u16>,
     pub card_type: u32,
     pub level: u32,
@@ -52,7 +55,9 @@ impl CardData {
     fn into_ocg_carddata_internal(self, leaky: bool) -> OCG_CardData {
         let mut setcodes = Vec::with_capacity(self.setcodes.len() + 1);
         for setcode in self.setcodes.into_iter() {
-            setcodes.push(setcode);
+            if setcode != 0 {
+                setcodes.push(setcode);
+            }
         }
         setcodes.push(0);
         setcodes.shrink_to_fit();
