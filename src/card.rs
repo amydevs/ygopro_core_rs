@@ -1,6 +1,31 @@
 use std::collections::HashSet;
 
-use crate::ffi::OCG_CardData;
+use crate::ffi::{OCG_CardData, OCG_NewCardInfo};
+
+#[derive(Debug, Clone, Default)]
+pub struct NewCardInfo {
+    pub team: u8,
+    pub duelist: u8,
+    pub code: u32,
+    pub con: u8,
+    pub loc: u32,
+    pub seq: u32,
+    pub pos: u32,
+}
+
+impl Into<OCG_NewCardInfo> for NewCardInfo {
+    fn into(self) -> OCG_NewCardInfo {
+        OCG_NewCardInfo {
+            team: self.team,
+            duelist: self.duelist,
+            code: self.code,
+            con: self.con,
+            loc: self.loc,
+            seq: self.seq,
+            pos: self.pos,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct CardData {

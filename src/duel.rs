@@ -8,9 +8,10 @@ use crate::ffi::{
     OCG_DuelOptions, OCG_DuelProcess, OCG_DuelQuery, OCG_DuelQueryCount, OCG_DuelQueryField,
     OCG_DuelQueryLocation, OCG_DuelSetResponse, OCG_DuelStatus,
     OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING, OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE,
-    OCG_DuelStatus_OCG_DUEL_STATUS_END, OCG_GetVersion, OCG_LoadScript, OCG_NewCardInfo,
-    OCG_QueryInfo, OCG_StartDuel,
+    OCG_DuelStatus_OCG_DUEL_STATUS_END, OCG_GetVersion, OCG_LoadScript, OCG_QueryInfo,
+    OCG_StartDuel,
 };
+use crate::NewCardInfo;
 
 use crate::card::CardData;
 use crate::error::OCGDuelError;
@@ -58,6 +59,9 @@ impl Default for DuelBuilder {
 }
 
 impl DuelBuilder {
+    pub fn new() -> DuelBuilder {
+        DuelBuilder::default()
+    }
     pub fn set_card_handler<F>(&mut self, callback: F)
     where
         F: CardHandler,
@@ -188,11 +192,20 @@ impl From<OCG_DuelStatus> for DuelStatus {
             OCG_DuelStatus_OCG_DUEL_STATUS_END => DuelStatus::End,
             OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING => DuelStatus::Awaiting,
             OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE => DuelStatus::Continue,
-            _ => panic!("Invalid OCG_DuelStatus"),
+            _ => panic!(
+                "Invalid OCG_DuelStatus, this should never happen! Please report this as a bug!"
+            ),
         }
     }
 }
 
+/// A Duel instance.
+///
+/// The Duel will be destroyed when it goes out of scope.
+/// Make sure that the lifetime of this duel matches whatever you want to use it for.
+///
+/// Construction of this struct MUST always handled by the DuelBuilder.
+/// Otherwise, memory leaks could happen!
 #[derive(Debug)]
 pub struct Duel {
     ptr: *mut c_void,
@@ -216,13 +229,21 @@ impl Duel {
         }
         [major_version, minor_version]
     }
+    /// Returns the raw pointer to the duel instance.
+    ///
+    /// For the sake of simplicity,
+    /// the lifetime of the value at the pointer
+    /// is tied to the lifetime of the [`Duel`].
+    ///
+    /// DO NOT CREATE A [`Duel`] FROM THIS POINTER,
+    /// IT WILL CAUSE TO DOUBLE FREE ERRORS.
     pub fn get_raw_ptr(&self) -> *mut c_void {
         self.ptr
     }
     // Lifecycle
-    pub fn new_card(&self, info: OCG_NewCardInfo) {
+    pub fn new_card(&self, info: NewCardInfo) {
         unsafe {
-            OCG_DuelNewCard(self.ptr, info);
+            OCG_DuelNewCard(self.ptr, info.into());
         }
     }
     /// Start the duel simulation and state machine.
@@ -400,7 +421,7 @@ mod tests {
             assert!(card.code == card_code);
         });
         let duel = duel_builder.build();
-        duel.new_card(OCG_NewCardInfo {
+        duel.new_card(NewCardInfo {
             team: 1,
             duelist: 1,
             code: card_code,
