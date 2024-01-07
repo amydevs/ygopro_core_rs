@@ -408,8 +408,10 @@ mod tests {
         let mut duel_builder = DuelBuilder::default();
         let card_code = 100;
         duel_builder.set_card_handler(|code| {
-            let mut card_data = CardData::default();
-            card_data.code = code;
+            let mut card_data = CardData {
+                code,
+                ..Default::default()
+            };
             card_data.setcodes.insert(1);
             card_data
         });

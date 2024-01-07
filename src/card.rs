@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::ffi::{OCG_CardData, OCG_NewCardInfo};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct NewCardInfo {
     pub team: u8,
     pub duelist: u8,
