@@ -14,7 +14,7 @@ use crate::ffi::{
 use crate::NewCardInfo;
 
 use crate::card::CardData;
-use crate::error::OCGDuelError;
+use crate::error::DuelError;
 use crate::player::Player;
 
 pub trait CardHandler: FnMut(u32) -> CardData + 'static {}
@@ -308,7 +308,7 @@ impl Duel {
             )
         };
         if result == 0 {
-            return Err(Box::new(OCGDuelError::ScriptLoadFailure(name.to_owned())));
+            return Err(Box::new(DuelError::ScriptLoadFailure(name.to_owned())));
         }
         Ok(())
     }
