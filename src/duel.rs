@@ -52,7 +52,7 @@ impl Default for DuelBuilder {
                 code,
                 ..Default::default()
             }),
-            script_handler: Box::new(|_, _| Ok(())),
+            script_handler: Box::new(|_, _| Err("No script handler set!")?),
             script_handler_wrapper: Box::new(|_, _| 0),
             log_handler: Box::new(|_, _| ()),
             card_read_done_handler: Box::new(|_| ()),
@@ -70,7 +70,7 @@ impl DuelBuilder {
         DuelBuilder::default()
     }
     /// Sets the card handler for the duel.
-    /// By default, this creates an empty card with the supplied code from the callback.
+    /// By default, the handler creates an empty card with the supplied code from the callback.
     pub fn set_card_handler<F>(&mut self, callback: F)
     where
         F: CardHandler,
@@ -78,6 +78,8 @@ impl DuelBuilder {
     {
         self.card_handler = Box::new(callback);
     }
+    /// Sets the script handler for the duel.
+    /// By default, the handler returns an error to indicated that the script handler has not been set.
     pub fn set_script_handler<F>(&mut self, callback: F)
     where
         F: ScriptHandler,
@@ -85,6 +87,9 @@ impl DuelBuilder {
     {
         self.script_handler = Box::new(callback);
     }
+    /// Sets the log handler for the duel.
+    /// By default, the handler is no-op.
+    /// You most likely want to set this to something that will use your logging framework of choice.
     pub fn set_log_handler<F>(&mut self, callback: F)
     where
         F: LogHandler,
@@ -92,6 +97,12 @@ impl DuelBuilder {
     {
         self.log_handler = Box::new(callback);
     }
+    /// Sets the card read done handler for the duel.
+    /// By default, the handler is no-op.
+    ///
+    /// The cardReaderDone callback is usually used for deallocating the setcodes buffer,
+    /// but this will always be done implicitly outside of your provided closure,
+    /// so don't worry about it.
     pub fn set_card_read_done_handler<F>(&mut self, callback: F)
     where
         F: CardReadDoneHandler,
@@ -205,7 +216,9 @@ impl DuelBuilder {
 
 #[derive(Debug)]
 pub enum DuelStatus {
+    /// Duel ended
     End = OCG_DuelStatus_OCG_DUEL_STATUS_END as isize,
+    /// Player response required
     Awaiting = OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING as isize,
     Continue = OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE as isize,
 }
