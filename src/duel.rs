@@ -391,7 +391,7 @@ impl Duel {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashSet, hash_map::RandomState};
+    use std::collections::{hash_map::RandomState, HashSet};
 
     use super::*;
 
@@ -433,12 +433,22 @@ mod tests {
     }
     #[test]
     fn test_load_script_duel() {
-        let duel_builder = DuelBuilder::default();
+        let mut duel_builder = DuelBuilder::default();
+        duel_builder.set_log_handler(|msg, _| {
+            println!("{}", msg);
+        });
         let duel = duel_builder.build();
         assert!(!duel.ptr.is_null());
         assert!(duel
             .load_script("invalid script", "invalid_script")
             .is_err());
+        assert!(duel.load_script("Debug.ReloadFieldEnd()", " ").is_ok());
+        assert!(duel
+            .load_script("CARD_CYBER_DRAGON = 70095154\nEFFECT_TYPE_FIELD = 0x2\nEFFECT_TYPE_CONTINUOUS = 0x800\nEVENT_STARTUP = 1000", "constants.lua")
+            .is_ok());
+        assert!(duel
+            .load_script(include_str!("../assets/c511005093.lua"), "c511005093.lua")
+            .is_ok());
     }
     #[test]
     fn test_new_card_duel() {
