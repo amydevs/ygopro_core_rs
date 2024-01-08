@@ -255,6 +255,8 @@ impl Duel {
         self.ptr
     }
     // Lifecycle
+    /// Add the card specified by info to the duel.
+    /// This calls the provided card_handler info.code and script_handler if the card script has not been loaded yet.
     pub fn new_card(&self, info: NewCardInfo) {
         unsafe {
             OCG_DuelNewCard(self.ptr, info.into());
@@ -267,6 +269,9 @@ impl Duel {
             OCG_StartDuel(self.ptr);
         }
     }
+    /// Simply calls drop on self.
+    /// This will in turn call [`OCG_DestroyDuel`] on the internal pointer,
+    /// deallocating the internal duel.
     pub fn destroy(self) {
         drop(self);
     }
@@ -327,9 +332,14 @@ impl Duel {
     pub fn query_count(&self, player: u8, location: u32) -> u32 {
         unsafe { OCG_DuelQueryCount(self.ptr, player, location) }
     }
-    pub fn query(&self, query_info: OCG_QueryInfo) -> Vec<u8> {
+    /// Returns a copy to an internal buffer for the FIRST card matching the query.
+    /// Subsequent calls invalidate previous queries.
+    pub fn query(&self, query_info: OCG_QueryInfo) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
         let mut ptr = unsafe { OCG_DuelQuery(self.ptr, &mut length, query_info) as *const u8 };
+        if ptr.is_null() {
+            return None;
+        }
         let mut result_vec: Vec<u8> = Vec::with_capacity(length as usize);
         let end_rounded_up = ptr.wrapping_offset(length as isize);
         while ptr != end_rounded_up {
@@ -338,12 +348,17 @@ impl Duel {
             }
             ptr = ptr.wrapping_offset(1);
         }
-        result_vec
+        Some(result_vec)
     }
-    pub fn query_location(&self, query_info: OCG_QueryInfo) -> Vec<u8> {
+    /// Returns a pointer to an internal buffer for the ALL cards matching the query.
+    /// Subsequent calls invalidate previous queries.
+    pub fn query_location(&self, query_info: OCG_QueryInfo) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
         let mut ptr =
             unsafe { OCG_DuelQueryLocation(self.ptr, &mut length, query_info) as *const u8 };
+        if ptr.is_null() {
+            return None;
+        }
         let mut result_vec: Vec<u8> = Vec::with_capacity(length as usize);
         let end_rounded_up = ptr.wrapping_offset(length as isize);
         while ptr != end_rounded_up {
@@ -352,11 +367,16 @@ impl Duel {
             }
             ptr = ptr.wrapping_offset(1);
         }
-        result_vec
+        Some(result_vec)
     }
-    pub fn query_field(&self) -> Vec<u8> {
+    /// Returns a pointer to an internal buffer containing card counts for every zone in the game.
+    /// Subsequent calls invalidate previous queries.
+    pub fn query_field(&self) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
         let mut ptr = unsafe { OCG_DuelQueryField(self.ptr, &mut length) as *const u8 };
+        if ptr.is_null() {
+            return None;
+        }
         let mut result_vec: Vec<u8> = Vec::with_capacity(length as usize);
         let end_rounded_up = ptr.wrapping_offset(length as isize);
         while ptr != end_rounded_up {
@@ -365,7 +385,7 @@ impl Duel {
             }
             ptr = ptr.wrapping_offset(1);
         }
-        result_vec
+        Some(result_vec)
     }
 }
 
