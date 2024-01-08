@@ -17,8 +17,14 @@ use crate::QueryInfo;
 
 pub trait CardHandler: FnMut(u32) -> CardData + 'static {}
 impl<T: FnMut(u32) -> CardData + 'static> CardHandler for T {}
-pub trait ScriptHandler: FnMut(&Duel, &str) -> i32 + 'static {}
-impl<T: FnMut(&Duel, &str) -> i32 + 'static> ScriptHandler for T {}
+pub trait ScriptHandler:
+    FnMut(&Duel, &str) -> Result<(), Box<dyn std::error::Error>> + 'static
+{
+}
+impl<T: FnMut(&Duel, &str) -> Result<(), Box<dyn std::error::Error>> + 'static> ScriptHandler
+    for T
+{
+}
 trait ScriptHandlerWrapper: FnMut(*mut c_void, &str) -> i32 + 'static {}
 impl<T: FnMut(*mut c_void, &str) -> i32 + 'static> ScriptHandlerWrapper for T {}
 pub trait LogHandler: FnMut(&str, i32) + 'static {}
@@ -42,8 +48,11 @@ pub struct DuelBuilder {
 impl Default for DuelBuilder {
     fn default() -> DuelBuilder {
         DuelBuilder {
-            card_handler: Box::new(|_code| CardData::default()),
-            script_handler: Box::new(|_, _| 0),
+            card_handler: Box::new(|code| CardData {
+                code,
+                ..Default::default()
+            }),
+            script_handler: Box::new(|_, _| Ok(())),
             script_handler_wrapper: Box::new(|_, _| 0),
             log_handler: Box::new(|_, _| ()),
             card_read_done_handler: Box::new(|_| ()),
@@ -60,6 +69,8 @@ impl DuelBuilder {
     pub fn new() -> DuelBuilder {
         DuelBuilder::default()
     }
+    /// Sets the card handler for the duel.
+    /// By default, this creates an empty card with the supplied code from the callback.
     pub fn set_card_handler<F>(&mut self, callback: F)
     where
         F: CardHandler,
@@ -161,12 +172,12 @@ impl DuelBuilder {
                 unsafe {
                     let mut_ptr_mut = mut_ptr.as_mut().unwrap();
                     mut_ptr_mut.ptr = duel_ptr;
-                    return (self.script_handler)(mut_ptr_mut, name);
+                    return (self.script_handler)(mut_ptr_mut, name).is_ok() as i32;
                 }
             }
             unsafe {
                 let mut_ptr_ref = mut_ptr.as_ref().unwrap();
-                (self.script_handler)(mut_ptr_ref, name)
+                (self.script_handler)(mut_ptr_ref, name).is_ok() as i32
             }
         });
         // Double indirection is required for the callback pointers
