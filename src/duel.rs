@@ -332,7 +332,7 @@ impl Duel {
     pub fn query_count(&self, player: u8, location: u32) -> u32 {
         unsafe { OCG_DuelQueryCount(self.ptr, player, location) }
     }
-    /// Returns a copy to an internal buffer for the FIRST card matching the query.
+    /// Returns a copy of an internal buffer for the FIRST card matching the query.
     /// Subsequent calls invalidate previous queries.
     pub fn query(&self, query_info: OCG_QueryInfo) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
@@ -350,7 +350,7 @@ impl Duel {
         }
         Some(result_vec)
     }
-    /// Returns a pointer to an internal buffer for the ALL cards matching the query.
+    /// Returns a copy of an internal buffer for the ALL cards matching the query.
     /// Subsequent calls invalidate previous queries.
     pub fn query_location(&self, query_info: OCG_QueryInfo) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
@@ -369,7 +369,7 @@ impl Duel {
         }
         Some(result_vec)
     }
-    /// Returns a pointer to an internal buffer containing card counts for every zone in the game.
+    /// Returns a copy of an internal buffer containing card counts for every zone in the game.
     /// Subsequent calls invalidate previous queries.
     pub fn query_field(&self) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
@@ -391,6 +391,8 @@ impl Duel {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{HashSet, hash_map::RandomState};
+
     use super::*;
 
     #[test]
@@ -427,6 +429,7 @@ mod tests {
         assert!(!duel.ptr.is_null());
         duel.start();
         duel.process();
+        duel.get_message();
     }
     #[test]
     fn test_load_script_duel() {
@@ -440,27 +443,52 @@ mod tests {
     #[test]
     fn test_new_card_duel() {
         let mut duel_builder = DuelBuilder::default();
-        let card_code = 100;
-        duel_builder.set_card_handler(|code| {
-            let mut card_data = CardData {
-                code,
-                ..Default::default()
-            };
-            card_data.setcodes.insert(1);
-            card_data
+        let setcodes: HashSet<u16, RandomState> = HashSet::from_iter([1u16]);
+        let card_data = CardData {
+            code: 100,
+            alias: 1,
+            setcodes: setcodes.clone(),
+            card_type: 1,
+            level: 1,
+            attribute: 1,
+            race: 1,
+            attack: 1,
+            defense: 1,
+            lscale: 1,
+            rscale: 1,
+            link_marker: 1,
+        };
+        let mut card_data_clone = card_data.clone();
+        duel_builder.set_card_handler(move |code| {
+            card_data_clone.code = code;
+            card_data_clone.clone()
         });
         duel_builder.set_card_read_done_handler(move |card| {
-            assert!(card.code == card_code);
+            assert!(card.code == card_data.code);
+            assert!(card.alias == card_data.alias);
+            assert!(card.setcodes.len() == card_data.setcodes.len());
+            for setcode in card.setcodes.iter() {
+                assert!(&setcodes.contains(setcode))
+            }
+            assert!(card.card_type == card_data.card_type);
+            assert!(card.level == card_data.level);
+            assert!(card.attribute == card_data.attribute);
+            assert!(card.race == card_data.race);
+            assert!(card.attack == card_data.attack);
+            assert!(card.defense == card_data.defense);
+            assert!(card.lscale == card_data.lscale);
+            assert!(card.rscale == card_data.rscale);
+            assert!(card.link_marker == card_data.link_marker);
         });
         let duel = duel_builder.build();
         duel.new_card(NewCardInfo {
             team: 1,
             duelist: 1,
-            code: card_code,
+            code: card_data.code,
             con: 1,
             loc: 1,
             seq: 1,
             pos: 1,
-        })
+        });
     }
 }
