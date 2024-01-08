@@ -7,13 +7,13 @@ use crate::ffi::{
     OCG_DuelOptions, OCG_DuelProcess, OCG_DuelQuery, OCG_DuelQueryCount, OCG_DuelQueryField,
     OCG_DuelQueryLocation, OCG_DuelSetResponse, OCG_DuelStatus,
     OCG_DuelStatus_OCG_DUEL_STATUS_AWAITING, OCG_DuelStatus_OCG_DUEL_STATUS_CONTINUE,
-    OCG_DuelStatus_OCG_DUEL_STATUS_END, OCG_GetVersion, OCG_LoadScript, OCG_QueryInfo,
-    OCG_StartDuel,
+    OCG_DuelStatus_OCG_DUEL_STATUS_END, OCG_GetVersion, OCG_LoadScript, OCG_StartDuel,
 };
 
 use crate::card::{CardData, NewCardInfo};
 use crate::error::DuelError;
 use crate::player::Player;
+use crate::QueryInfo;
 
 pub trait CardHandler: FnMut(u32) -> CardData + 'static {}
 impl<T: FnMut(u32) -> CardData + 'static> CardHandler for T {}
@@ -42,7 +42,7 @@ pub struct DuelBuilder {
 impl Default for DuelBuilder {
     fn default() -> DuelBuilder {
         DuelBuilder {
-            card_handler: Box::new(|_| (CardData::default())),
+            card_handler: Box::new(|_code| CardData::default()),
             script_handler: Box::new(|_, _| 0),
             script_handler_wrapper: Box::new(|_, _| 0),
             log_handler: Box::new(|_, _| ()),
@@ -329,14 +329,15 @@ impl Duel {
     }
     // Querying
     /// Returns the number of cards in the specified zone.
-    pub fn query_count(&self, player: u8, location: u32) -> u32 {
-        unsafe { OCG_DuelQueryCount(self.ptr, player, location) }
+    pub fn query_count(&self, team: u8, loc: u32) -> u32 {
+        unsafe { OCG_DuelQueryCount(self.ptr, team, loc) }
     }
     /// Returns a copy of an internal buffer for the FIRST card matching the query.
     /// Subsequent calls invalidate previous queries.
-    pub fn query(&self, query_info: OCG_QueryInfo) -> Option<Vec<u8>> {
+    pub fn query(&self, query_info: QueryInfo) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
-        let mut ptr = unsafe { OCG_DuelQuery(self.ptr, &mut length, query_info) as *const u8 };
+        let mut ptr =
+            unsafe { OCG_DuelQuery(self.ptr, &mut length, query_info.into()) as *const u8 };
         if ptr.is_null() {
             return None;
         }
@@ -352,10 +353,10 @@ impl Duel {
     }
     /// Returns a copy of an internal buffer for the ALL cards matching the query.
     /// Subsequent calls invalidate previous queries.
-    pub fn query_location(&self, query_info: OCG_QueryInfo) -> Option<Vec<u8>> {
+    pub fn query_location(&self, query_info: QueryInfo) -> Option<Vec<u8>> {
         let mut length: u32 = 0;
         let mut ptr =
-            unsafe { OCG_DuelQueryLocation(self.ptr, &mut length, query_info) as *const u8 };
+            unsafe { OCG_DuelQueryLocation(self.ptr, &mut length, query_info.into()) as *const u8 };
         if ptr.is_null() {
             return None;
         }
@@ -429,7 +430,7 @@ mod tests {
         assert!(!duel.ptr.is_null());
         duel.start();
         duel.process();
-        duel.get_message();
+        assert!(!duel.get_message().is_empty());
     }
     #[test]
     fn test_load_script_duel() {
@@ -500,5 +501,27 @@ mod tests {
             seq: 1,
             pos: 1,
         });
+    }
+    #[test]
+    fn test_query_count_duel() {
+        let mut duel_builder = DuelBuilder::default();
+        duel_builder.set_card_handler(|code| CardData {
+            code,
+            ..Default::default()
+        });
+        let duel = duel_builder.build();
+        assert!(duel.query_count(1, 0x02) == 0);
+        // TODO: still need to test this further
+    }
+    #[test]
+    fn test_query_field() {
+        let mut duel_builder = DuelBuilder::default();
+        duel_builder.set_card_handler(|code| CardData {
+            code,
+            ..Default::default()
+        });
+        let duel = duel_builder.build();
+        assert!(duel.query_field().is_some());
+        // TODO: still need to test this further
     }
 }

@@ -4,8 +4,10 @@ pub mod card;
 pub mod duel;
 pub mod error;
 pub mod player;
+pub mod query;
 
 pub use crate::card::*;
 pub use crate::duel::*;
 pub use crate::error::*;
 pub use crate::player::*;
+pub use crate::query::*;
