@@ -1,5 +1,6 @@
 use ffi::OCG_QueryInfo;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct QueryInfo {
     pub flags: u32,
     pub con: u8,
