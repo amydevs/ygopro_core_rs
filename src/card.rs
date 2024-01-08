@@ -78,7 +78,7 @@ impl From<OCG_CardData> for CardData {
 }
 
 impl CardData {
-    fn into_ocg_carddata_internal(self, leaky: bool) -> OCG_CardData {
+    unsafe fn into_ocg_carddata_internal(self, leaky: bool) -> OCG_CardData {
         let mut setcodes = Vec::with_capacity(self.setcodes.len() + 1);
         for setcode in self.setcodes.into_iter() {
             if setcode != 0 {
@@ -106,18 +106,19 @@ impl CardData {
             link_marker: self.link_marker,
         }
     }
-    /// # Warning
+    /// # Safety
     /// This method will make the internal Vec<u16> created for the setcode pointer to be forgotten by the Rust borrow checker.
     /// This should only be used internally, and in cases where there is a deallocation mecanism set.
     /// Deallocation of setcodes should be done in set_card_read_done_handler.
     /// https://stackoverflow.com/questions/39224904/how-to-expose-a-rust-vect-to-ffi
-    pub fn into_ocg_carddata_leaky(self) -> OCG_CardData {
+    pub unsafe fn into_ocg_carddata_leaky(self) -> OCG_CardData {
         self.into_ocg_carddata_internal(true)
     }
 }
 
 impl From<CardData> for OCG_CardData {
     fn from(val: CardData) -> Self {
-        val.into_ocg_carddata_internal(false)
+        // Use of unsafe block is okay, this function is safe when leaky is set to false.
+        unsafe { val.into_ocg_carddata_internal(false) }
     }
 }
