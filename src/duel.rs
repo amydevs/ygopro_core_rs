@@ -538,7 +538,7 @@ mod tests {
         // TODO: still need to test this further
     }
     #[test]
-    fn test_query_field() {
+    fn test_query_field_duel() {
         let mut duel_builder = DuelBuilder::default();
         duel_builder.set_card_handler(|code| CardData {
             code,
@@ -546,6 +546,20 @@ mod tests {
         });
         let duel = duel_builder.build();
         assert!(duel.query_field().is_some());
+        // TODO: still need to test this further
+    }
+    #[test]
+    fn test_query_location_duel() {
+        let duel_builder = DuelBuilder::default();
+        let duel = duel_builder.build();
+        assert!(duel.query_location(QueryInfo::default()).is_some());
+        // TODO: still need to test this further
+    }
+    #[test]
+    fn test_query_duel() {
+        let duel_builder = DuelBuilder::default();
+        let duel = duel_builder.build();
+        assert!(duel.query(QueryInfo::default()).is_none());
         // TODO: still need to test this further
     }
 }
