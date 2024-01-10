@@ -213,23 +213,20 @@ impl DuelBuilder {
             enableUnsafeLibraries: self.enable_unsafe_libraries.into(),
         };
         let res_code: i32 = unsafe { OCG_CreateDuel(&mut duel.ptr, options) };
-        if res_code < 0 {
-            panic!("Failed to create duel to to unknown error");
-        }
         #[allow(non_upper_case_globals)]
-        match res_code as u32 {
-            OCG_DuelCreationStatus_OCG_DUEL_CREATION_SUCCESS => duel,
+        match res_code.try_into() {
+            Ok(OCG_DuelCreationStatus_OCG_DUEL_CREATION_SUCCESS) => duel,
             // These should never happen if types are abided by, so we panic.
-            OCG_DuelCreationStatus_OCG_DUEL_CREATION_NO_OUTPUT => {
+            Ok(OCG_DuelCreationStatus_OCG_DUEL_CREATION_NO_OUTPUT) => {
                 panic!("Failed to create duel: OCG_DUEL_CREATION_NO_OUTPUT")
             }
-            OCG_DuelCreationStatus_OCG_DUEL_CREATION_NOT_CREATED => {
+            Ok(OCG_DuelCreationStatus_OCG_DUEL_CREATION_NOT_CREATED) => {
                 panic!("Failed to create duel: OCG_DUEL_CREATION_NOT_CREATED")
             }
-            OCG_DuelCreationStatus_OCG_DUEL_CREATION_NULL_DATA_READER => {
+            Ok(OCG_DuelCreationStatus_OCG_DUEL_CREATION_NULL_DATA_READER) => {
                 panic!("Failed to create duel: OCG_DUEL_CREATION_NULL_DATA_READER")
             }
-            OCG_DuelCreationStatus_OCG_DUEL_CREATION_NULL_SCRIPT_READER => {
+            Ok(OCG_DuelCreationStatus_OCG_DUEL_CREATION_NULL_SCRIPT_READER) => {
                 panic!("Failed to create duel: OCG_DUEL_CREATION_NULL_SCRIPT_READER")
             }
             _ => panic!("Failed to create duel to to unknown error"),
