@@ -212,9 +212,12 @@ impl DuelBuilder {
             team2: self.team_2.into(),
             enableUnsafeLibraries: self.enable_unsafe_libraries.into(),
         };
-        let res_code = unsafe { OCG_CreateDuel(&mut duel.ptr, options) };
+        let res_code: i32 = unsafe { OCG_CreateDuel(&mut duel.ptr, options) };
+        if res_code < 0 {
+            panic!("Failed to create duel to to unknown error");
+        }
         #[allow(non_upper_case_globals)]
-        match res_code {
+        match res_code as u32 {
             OCG_DuelCreationStatus_OCG_DUEL_CREATION_SUCCESS => duel,
             // These should never happen if types are abided by, so we panic.
             OCG_DuelCreationStatus_OCG_DUEL_CREATION_NO_OUTPUT => {
