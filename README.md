@@ -17,9 +17,19 @@ This crate, and the underlying EDOPro ygopro-core fork are both licensed under A
 
 # Examples
 
-TBD...
+```rust
+use ygopro_core_rs::DuelBuilder;
 
-See [EDOPro](https://github.com/ProjectIgnis/EDOPro) itself for an idea on how the library is used.
+fn main() {
+    let duel_builder = DuelBuilder::default();
+    let duel = duel_builder.build();
+    duel.start();
+    duel.process();
+    println!("{:?}", duel.get_message());
+}
+```
+
+See [EDOPro](https://github.com/ProjectIgnis/EDOPro) itself for more of an idea on how the library is used.
 
 Or the tests found in [`./src/duel.rs`](./src/duel.rs).
 
