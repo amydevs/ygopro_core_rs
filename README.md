@@ -17,8 +17,12 @@ This crate, and the underlying EDOPro ygopro-core fork are both licensed under A
 
 # Examples
 
-TBD... See [EDOPro](https://github.com/ProjectIgnis/EDOPro) itself for an idea on how the library is used.
+TBD...
+
+See [EDOPro](https://github.com/ProjectIgnis/EDOPro) itself for an idea on how the library is used.
+
+Or the tests found in [`./src/duel.rs`](./src/duel.rs).
 
 # What About the Query/Message Buffers?
 
-The de/serialization of those buffers are outside of the scope of default features of this crate. This is to be done at a later date, either as an optional feature or a separate create, depending on how suitable the data structures are for the Bevy Rust EDOPro client I'll eventually make.
+The de/serialization of those buffers are outside of the scope of default features of this crate. This is to be done at a later date, either as an optional feature or a separate create, depending on how suitable the data structures are for the Bevy Rust EDOPro client I'll eventually make. For now, common message constants can be found under `ygopro_core_rs::common`.
