@@ -11,5 +11,6 @@ members = [
 ]
 
 [dependencies]
+bitflags = "2.4.1"
 thiserror = "1.0"
 ygopro-core-rs-sys = {path = "./ygopro-core-rs-sys" }

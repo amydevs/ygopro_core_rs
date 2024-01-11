@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 // Locations
 pub const LOCATION_DECK: u32 = 0x01;
 pub const LOCATION_HAND: u32 = 0x02;
@@ -12,18 +13,49 @@ pub const LOCATION_FZONE: u32 = 0x100;
 pub const LOCATION_PZONE: u32 = 0x200;
 pub const LOCATION_ALL: u32 = 0x3ff;
 // For Redirect
-pub const LOCATION_DECKBOT: u32 = 0x10001; // Return to deck bottom
-pub const LOCATION_DECKSHF: u32 = 0x20001; // Return to deck and shuffle
+/// Return to deck bottom
+pub const LOCATION_DECKBOT: u32 = 0x10001; 
+/// Return to deck and shuffle
+pub const LOCATION_DECKSHF: u32 = 0x20001;
+bitflags! {
+    pub struct Flags: u32 {
+        const Deck = LOCATION_DECK;
+        const Hand = LOCATION_HAND;
+        const MZone = LOCATION_MZONE;
+        const SZone = LOCATION_SZONE;
+        const Grave = LOCATION_GRAVE;
+        const Removed = LOCATION_REMOVED;
+        const Extra = LOCATION_EXTRA;
+        const Overlay = LOCATION_OVERLAY;
+        const OnField = LOCATION_ONFIELD;
+        const FZone = LOCATION_FZONE;
+        const PZone = LOCATION_PZONE;
+        const All = LOCATION_ALL;
+        const DeckBot = LOCATION_DECKBOT;
+        const DeckShf = LOCATION_DECKSHF;
+    }
+}
 
 // Positions
-pub const POS_FACEUP_ATTACK: u32 = 0x1;
-pub const POS_FACEDOWN_ATTACK: u32 = 0x2;
-pub const POS_FACEUP_DEFENSE: u32 = 0x4;
-pub const POS_FACEDOWN_DEFENSE: u32 = 0x8;
-pub const POS_FACEUP: u32 = 0x5;
-pub const POS_FACEDOWN: u32 = 0xa;
-pub const POS_ATTACK: u32 = 0x3;
-pub const POS_DEFENSE: u32 = 0xc;
+pub const POS_FACEUP_ATTACK: u8 = 0x1;
+pub const POS_FACEDOWN_ATTACK: u8 = 0x2;
+pub const POS_FACEUP_DEFENSE: u8 = 0x4;
+pub const POS_FACEDOWN_DEFENSE: u8 = 0x8;
+pub const POS_FACEUP: u8 = 0x5;
+pub const POS_FACEDOWN: u8 = 0xa;
+pub const POS_ATTACK: u8 = 0x3;
+pub const POS_DEFENSE: u8 = 0xc;
+#[repr(u8)]
+pub enum Position {
+    FaceupAttack = POS_FACEUP_ATTACK,
+    FacedownAttack = POS_FACEDOWN_ATTACK,
+    FaceupDefense = POS_FACEUP_DEFENSE,
+    FacedownDefense = POS_FACEDOWN_DEFENSE,
+    Faceup = POS_FACEUP,
+    Facedown = POS_FACEDOWN,
+    Attack = POS_ATTACK,
+    Defense = POS_DEFENSE,
+}
 
 // Flip effect flags
 pub const NO_FLIP_EFFECT: u32 = 0x10000;
@@ -55,6 +87,36 @@ pub const TYPE_XYZ: u32 = 0x800000;
 pub const TYPE_PENDULUM: u32 = 0x1000000;
 pub const TYPE_SPSUMMON: u32 = 0x2000000;
 pub const TYPE_LINK: u32 = 0x4000000;
+bitflags! {
+    pub struct Type: u32 {
+        const Monster = TYPE_MONSTER;
+        const Spell = TYPE_SPELL;
+        const Trap = TYPE_TRAP;
+        const Normal = TYPE_NORMAL;
+        const Effect = TYPE_EFFECT;
+        const Fusion = TYPE_FUSION;
+        const Ritual = TYPE_RITUAL;
+        const TrapMonster = TYPE_TRAPMONSTER;
+        const Spirit = TYPE_SPIRIT;
+        const Union = TYPE_UNION;
+        const Gemini = TYPE_GEMINI;
+        const Tuner = TYPE_TUNER;
+        const Synchro = TYPE_SYNCHRO;
+        const Token = TYPE_TOKEN;
+        const Maximum = TYPE_MAXIMUM;
+        const QuickPlay = TYPE_QUICKPLAY;
+        const Continuous = TYPE_CONTINUOUS;
+        const Equip = TYPE_EQUIP;
+        const Field = TYPE_FIELD;
+        const Counter = TYPE_COUNTER;
+        const Flip = TYPE_FLIP;
+        const Toon = TYPE_TOON;
+        const Xyz = TYPE_XYZ;
+        const Pendulum = TYPE_PENDULUM;
+        const SpSummon = TYPE_SPSUMMON;
+        const Link = TYPE_LINK;
+    }
+}
 
 // Attributes
 pub const ATTRIBUTE_EARTH: u32 = 0x01;
@@ -64,6 +126,16 @@ pub const ATTRIBUTE_WIND: u32 = 0x08;
 pub const ATTRIBUTE_LIGHT: u32 = 0x10;
 pub const ATTRIBUTE_DARK: u32 = 0x20;
 pub const ATTRIBUTE_DIVINE: u32 = 0x40;
+#[repr(u32)]
+pub enum Attribute {
+    Earth = ATTRIBUTE_EARTH,
+    Water = ATTRIBUTE_WATER,
+    Fire = ATTRIBUTE_FIRE,
+    Wind = ATTRIBUTE_WIND,
+    Light = ATTRIBUTE_LIGHT,
+    Dark = ATTRIBUTE_DARK,
+    Divine = ATTRIBUTE_DIVINE,
+}
 
 // Races
 pub const RACE_WARRIOR: u32 = 0x1;
@@ -348,6 +420,35 @@ pub const OPCODE_GETSETCARD: u64 = 0x4000010600000000;
 pub const OPCODE_GETTYPE: u64 = 0x4000010700000000;
 pub const OPCODE_GETRACE: u64 = 0x4000010800000000;
 pub const OPCODE_GETATTRIBUTE: u64 = 0x4000010900000000;
+#[repr(u64)]
+pub enum Opcode {
+    Add = OPCODE_ADD,
+    Sub = OPCODE_SUB,
+    Mul = OPCODE_MUL,
+    Div = OPCODE_DIV,
+    And = OPCODE_AND,
+    Or = OPCODE_OR,
+    Neg = OPCODE_NEG,
+    Not = OPCODE_NOT,
+    Band = OPCODE_BAND,
+    Bor = OPCODE_BOR,
+    Bnot = OPCODE_BNOT,
+    Bxor = OPCODE_BXOR,
+    Lshift = OPCODE_LSHIFT,
+    Rshift = OPCODE_RSHIFT,
+    AllowAliases = OPCODE_ALLOW_ALIASES,
+    AllowTokens = OPCODE_ALLOW_TOKENS,
+    IsCode = OPCODE_ISCODE,
+    IsSetCard = OPCODE_ISSETCARD,
+    IsType = OPCODE_ISTYPE,
+    IsRace = OPCODE_ISRACE,
+    IsAttribute = OPCODE_ISATTRIBUTE,
+    GetCode = OPCODE_GETCODE,
+    GetSetCard = OPCODE_GETSETCARD,
+    GetType = OPCODE_GETTYPE,
+    GetRace = OPCODE_GETRACE,
+    GetAttribute = OPCODE_GETATTRIBUTE,
+}
 
 // Players
 pub const PLAYER_NONE: u8 = 2;
@@ -365,6 +466,19 @@ pub const PHASE_DAMAGE_CAL: u16 = 0x40;
 pub const PHASE_BATTLE: u16 = 0x80;
 pub const PHASE_MAIN2: u16 = 0x100;
 pub const PHASE_END: u16 = 0x200;
+#[repr(u16)]
+pub enum Phase {
+    Draw = PHASE_DRAW,
+    Standby = PHASE_STANDBY,
+    Main1 = PHASE_MAIN1,
+    BattleStart = PHASE_BATTLE_START,
+    BattleStep = PHASE_BATTLE_STEP,
+    Damage = PHASE_DAMAGE,
+    DamageCal = PHASE_DAMAGE_CAL,
+    Battle = PHASE_BATTLE,
+    Main2 = PHASE_MAIN2,
+    End = PHASE_END,
+}
 
 // Options
 pub const DUEL_TEST_MODE: u64 = 0x01;
@@ -452,12 +566,68 @@ pub const DUEL_MODE_MR5: u64 = DUEL_PZONE
     | DUEL_FSX_MMZONE
     | DUEL_TRAP_MONSTERS_NOT_USE_ZONE
     | DUEL_TRIGGER_ONLY_IN_LOCATION;
+bitflags! {
+    pub struct DuelRules: u64 {
+        const TestMode = DUEL_TEST_MODE;
+        const AttackFirstTurn = DUEL_ATTACK_FIRST_TURN;
+        const UseTrapsInNewChain = DUEL_USE_TRAPS_IN_NEW_CHAIN;
+        const SixStepBattleStep = DUEL_6_STEP_BATLLE_STEP;
+        const PseudoShuffle = DUEL_PSEUDO_SHUFFLE;
+        const TriggerWhenPrivateKnowledge = DUEL_TRIGGER_WHEN_PRIVATE_KNOWLEDGE;
+        const SimpleAI = DUEL_SIMPLE_AI;
+        const Relay = DUEL_RELAY;
+        const ObsoleteIgnition = DUEL_OBSOLETE_IGNITION;
+        const FirstTurnDraw = DUEL_1ST_TURN_DRAW;
+        const OneFaceupField = DUEL_1_FACEUP_FIELD;
+        const PZone = DUEL_PZONE;
+        const SeparatePZone = DUEL_SEPARATE_PZONE;
+        const EMZone = DUEL_EMZONE;
+        const FSXMMZone = DUEL_FSX_MMZONE;
+        const TrapMonstersNotUseZone = DUEL_TRAP_MONSTERS_NOT_USE_ZONE;
+        const ReturnToDeckTriggers = DUEL_RETURN_TO_DECK_TRIGGERS;
+        const TriggerOnlyInLocation = DUEL_TRIGGER_ONLY_IN_LOCATION;
+        const SPSummonOnceOldNegate = DUEL_SPSUMMON_ONCE_OLD_NEGATE;
+        const CannotSummonOathOld = DUEL_CANNOT_SUMMON_OATH_OLD;
+        const NoStandbyPhase = DUEL_NO_STANDBY_PHASE;
+        const NoMainPhase2 = DUEL_NO_MAIN_PHASE_2;
+        const ThreeColumnsField = DUEL_3_COLUMNS_FIELD;
+        const DrawUntil5 = DUEL_DRAW_UNTIL_5;
+        const NoHandLimit = DUEL_NO_HAND_LIMIT;
+        const UnlimitedSummons = DUEL_UNLIMITED_SUMMONS;
+        const InvertedQuickPriority = DUEL_INVERTED_QUICK_PRIORITY;
+        const EquipNotSentIfMissingTarget = DUEL_EQUIP_NOT_SENT_IF_MISSING_TARGET;
+        const ZeroAtkDestroyed = DUEL_0_ATK_DESTROYED;
+        const StoreAttackReplays = DUEL_STORE_ATTACK_REPLAYS;
+        const SingleChainInDamageSubstep = DUEL_SINGLE_CHAIN_IN_DAMAGE_SUBSTEP;
+        const CanReposIfNonSumplayer = DUEL_CAN_REPOS_IF_NON_SUMPLAYER;
+        const TCGSegocNonpublic = DUEL_TCG_SEGOC_NONPUBLIC;
+        const TCGSegocFirsttrigger = DUEL_TCG_SEGOC_FIRSTTRIGGER;
+        const ModeSpeed = DUEL_MODE_SPEED;
+        const ModeRush = DUEL_MODE_RUSH;
+        const ModeMR1 = DUEL_MODE_MR1;
+        const ModeGoat = DUEL_MODE_GOAT;
+        const ModeMR2 = DUEL_MODE_MR2;
+        const ModeMR3 = DUEL_MODE_MR3;
+        const ModeMR4 = DUEL_MODE_MR4;
+        const ModeMR5 = DUEL_MODE_MR5;
+    }
+}
 pub const DUEL_MODE_MR1_FORB: u32 = TYPE_XYZ | TYPE_PENDULUM | TYPE_LINK;
 pub const DUEL_MODE_MR2_FORB: u32 = TYPE_PENDULUM | TYPE_LINK;
 pub const DUEL_MODE_MR3_FORB: u32 = TYPE_LINK;
 pub const DUEL_MODE_MR4_FORB: u32 = 0;
 pub const DUEL_MODE_MR5_FORB: u32 = 0;
+bitflags! {
+    pub struct DuelRuleFORB: u32 {
+        const ModeMR1 = DUEL_MODE_MR1_FORB;
+        const ModeMR2 = DUEL_MODE_MR2_FORB;
+        const ModeMR3 = DUEL_MODE_MR3_FORB;
+        const ModeMR4 = DUEL_MODE_MR4_FORB;
+        const ModeMR5 = DUEL_MODE_MR5_FORB;
+    }
+}
 
+#[repr(u8)]
 pub enum ActivityType {
     Summon = 1,
     NormalSummon = 2,
